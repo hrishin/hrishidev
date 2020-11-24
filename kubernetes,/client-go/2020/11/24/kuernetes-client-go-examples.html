@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary" />
 <meta property="twitter:title" content="Examples of using Kubernetes client-go" />
 <script type="application/ld+json">
-{"mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/kubernetes,/client-go/2020/11/24/kuernetes-client-go-examples.html"},"url":"http://localhost:4000/kubernetes,/client-go/2020/11/24/kuernetes-client-go-examples.html","headline":"Examples of using Kubernetes client-go","datePublished":"2020-11-24T15:00:12+00:00","dateModified":"2020-11-24T15:00:12+00:00","description":"Background","@type":"BlogPosting","@context":"https://schema.org"}</script>
+{"mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/kubernetes,/client-go/2020/11/24/kuernetes-client-go-examples.html"},"url":"http://localhost:4000/kubernetes,/client-go/2020/11/24/kuernetes-client-go-examples.html","description":"Background","headline":"Examples of using Kubernetes client-go","dateModified":"2020-11-24T15:00:12+00:00","datePublished":"2020-11-24T15:00:12+00:00","@type":"BlogPosting","@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Cognitive Perception" /></head>
 <body><header class="site-header" role="banner">
@@ -50,18 +50,21 @@
     <h2 id="background">Background</h2>
 
 <p>One of the beuty of the <strong>Kubernetes</strong> is its <em>extensiblity</em>. Just like Kubernetes provide the 
-Resources/Objects like <code class="language-plaintext highlighter-rouge">Deployment, StatefulSet, Pod, Service</code> etc to run the application workloads, it allows defining <code class="language-plaintext highlighter-rouge">Custome Resources</code> to define the custom tailer workloads. e.g. <code class="language-plaintext highlighter-rouge">Pipelines</code>, <code class="language-plaintext highlighter-rouge">Task</code> resources to create CI/CD pipeline workloads. That’s <em>extensibility</em>.</p>
+Resources/Objects such as <code class="language-plaintext highlighter-rouge">Deployment, StatefulSet, Pod, Service</code> etc to run the application workloads. It allows defining <code class="language-plaintext highlighter-rouge">Custome Resources</code> to implement the custom tailor workloads. e.g. <code class="language-plaintext highlighter-rouge">Pipelines</code>, <code class="language-plaintext highlighter-rouge">Task</code> resources to create CI/CD pipeline workloads. That’s <em>extensibility</em>.</p>
 
 <p>In order to work with resources Kubernetes community provides a awesome  <code class="language-plaintext highlighter-rouge">client-go</code> library. It provides the collection of methods()/APIS() for the <code class="language-plaintext highlighter-rouge">Golang</code> to perform certain  operations on resources such as <code class="language-plaintext highlighter-rouge">create</code>, <code class="language-plaintext highlighter-rouge">get/list</code>, <code class="language-plaintext highlighter-rouge">update</code>and so on. So one can use the Kuberrnetes HTTP APIS to orchestrate
 certain workflow for automating repetative mundane things.</p>
 
-<p><em>One of the challeneg sometimes I feel using cleint-go is lack of API usage documentation or examples</em></p>
+<p><em>One of the challenge <strong>sometimes</strong> I feel using the <code class="language-plaintext highlighter-rouge">client-go</code> is to undersand the API usage <a href="https://godoc.org/k8s.io/client-go">documentation</a> and examples. Or often time I need to take a reference of old code to recall the usage.</em></p>
 
-<p>Hence I to overcome this challenge I’ve started documenting examples of frequnekt used API’ and their options.</p>
+<p>Examples: how to load the default <code class="language-plaintext highlighter-rouge">./kube/config</code>, fetch the default <code class="language-plaintext highlighter-rouge">namesapce</code> or current <code class="language-plaintext highlighter-rouge">context</code>, use the fake client then mock the watch API
+to unit tets the code.</p>
+
+<p>Hence to overcome this challenge I’ve started documenting examples to demonstartes API’s usage with their options.
+A collection small programs and easy to   refer.</p>
 
 <h2 id="examples">Examples</h2>
 <p>One can find all examples at <a href="https://github.com/hrishin/k8s-client-go-examples">https://github.com/hrishin/k8s-client-go-examples</a></p>
-
 
   </div><a class="u-url" href="/kubernetes,/client-go/2020/11/24/kuernetes-client-go-examples.html" hidden></a>
 </article>
