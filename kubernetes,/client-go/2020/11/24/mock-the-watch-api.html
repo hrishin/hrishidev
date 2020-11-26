@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary" />
 <meta property="twitter:title" content="Unit test client-go watch API to mock the watch events in Kubernetes" />
 <script type="application/ld+json">
-{"mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api.html"},"url":"http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api.html","headline":"Unit test client-go watch API to mock the watch events in Kubernetes","datePublished":"2020-11-24T21:00:12+00:00","dateModified":"2020-11-24T21:00:12+00:00","description":"Unit test client-go watch API to mock the watch events using client-go testing package","@type":"BlogPosting","@context":"https://schema.org"}</script>
+{"mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api.html"},"url":"http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api.html","description":"Unit test client-go watch API to mock the watch events using client-go testing package","headline":"Unit test client-go watch API to mock the watch events in Kubernetes","dateModified":"2020-11-24T21:00:12+00:00","datePublished":"2020-11-24T21:00:12+00:00","@type":"BlogPosting","@context":"https://schema.org"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Cognitive Perception" /></head>
 <body><header class="site-header" role="banner">
@@ -56,7 +56,7 @@ order to test code that uses client-go <code class="language-plaintext highlight
 
 <p>Before that, let’s see how to use the <code class="language-plaintext highlighter-rouge">fake</code> package to <code class="language-plaintext highlighter-rouge">client-go</code> APIs.</p>
 
-<p>In this case, we will use the <code class="language-plaintext highlighter-rouge">pod()</code> API.</p>
+<p>In this case, we will use the <code class="language-plaintext highlighter-rouge">pod()</code> API. You can find the complete example at <a href="https://github.com/hrishin/k8s-client-go-examples/tree/main/examples/mock-watch-events">https://github.com/hrishin/k8s-client-go-examples/tree/main/examples/mock-watch-events</a></p>
 
 <h2 id="test-get-pod-by-name">Test get pod by name</h2>
 
@@ -95,7 +95,7 @@ ok  	github.com/hrishin/k8s-client-go-examples/examples/mock-watch-events	0.571s
 <p>In this senario, we will simulate pod life cycle events i.e. <code class="language-plaintext highlighter-rouge">pod.status.phase</code> -&gt; {PodPending,  PodUnknown, PodRunning}.
 Usually, we encounter such code to wait for the pod to become up &amp; running.</p>
 
-<p>To feed such events <code class="language-plaintext highlighter-rouge">client-go</code> provide <code class="language-plaintext highlighter-rouge">testing</code> package. Following example snippet the way to feed the mock events for the <code class="language-plaintext highlighter-rouge">watch</code> API.</p>
+<p>To feed such events <code class="language-plaintext highlighter-rouge">client-go</code> provides the <code class="language-plaintext highlighter-rouge">testing</code> package. Following example snippet to feed the mock events for the <code class="language-plaintext highlighter-rouge">watch</code> API.</p>
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>clients := fake.NewSimpleClientset()
 watcher := watch.NewFake()
@@ -113,11 +113,11 @@ go func() {
 }()
 </code></pre></div></div>
 
-<p>Important to note here that in <code class="language-plaintext highlighter-rouge">clients.PrependWatchReactor("pods", k8stest.DefaultWatchReactor(watcher, nil))</code>  method <code class="language-plaintext highlighter-rouge">pods</code> is the plural resource name. Giving the wrong resource name would fail mocking watch events. One of the way to get the resource name is using</p>
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl api-resources | grep -h pod
+<p>Important to note here that in <code class="language-plaintext highlighter-rouge">clients.PrependWatchReactor("pods", k8stest.DefaultWatchReactor(watcher, nil))</code> method <code class="language-plaintext highlighter-rouge">pods</code> is the plural resource name. Giving the wrong resource name would fail mocking watch events. One of the way to get the resource name is using</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kubectl api-resources | grep -i pod
 
 NAME  SHORTNAMES APIGROUP NAMESPACED KIND
-pod  po  				  true 		 Pod
+pods  po  				  true 		 Pod
 </code></pre></div></div>
 
 <p>Test the example by running <code class="language-plaintext highlighter-rouge">make test-watch-pod</code></p>
@@ -125,25 +125,23 @@ pod  po  				  true 		 Pod
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>➜  mock-watch-events git:(mock-watch) ✗ make test-watch-pod
 go test -run Test_watch_pod_using_fake_client -v
 === RUN   Test_watch_pod_using_fake_client
-    fake_client_test.go:90: Watch pod updates by pod name using the client-go API 
-    fake_client_test.go:96: 	Test 0: checking the error code response
-    fake_client_test.go:101: 	✓	client go has return no error.
-    fake_client_test.go:104: 	Test 1: checking watch event updates
-    fake_client_test.go:113: 	✓	got a pod update event
-    fake_client_test.go:118: 	✓	got a pod phase values Pending
-    fake_client_test.go:113: 	✓	got a pod update event
-    fake_client_test.go:118: 	✓	got a pod phase values Unknown
-    fake_client_test.go:113: 	✓	got a pod update event
-    fake_client_test.go:118: 	✓	got a pod phase values Running
---- PASS: Test_watch_pod_using_fake_client (0.90s)
+    fake_client_test.go:91: Watch pod updates by pod name using the client-go API 
+    fake_client_test.go:97:     Test 0: checking the error code response
+    fake_client_test.go:102:    ✓       client go has return no error.
+    fake_client_test.go:105:    Test 1: checking watch event updates
+    fake_client_test.go:115:    ✓       got a pod update event
+    fake_client_test.go:122:    ✓       expecting pod phase Pending and got Pending
+    fake_client_test.go:115:    ✓       got a pod update event
+    fake_client_test.go:122:    ✓       expecting pod phase Unknown and got Unknown
+    fake_client_test.go:115:    ✓       got a pod update event
+    fake_client_test.go:122:    ✓       expecting pod phase Running and got Running
+--- PASS: Test_watch_pod_using_fake_client (0.91s)
 PASS
-ok  	github.com/hrishin/k8s-client-go-examples/examples/mock-watch-events	4.468s
+ok      github.com/hrishin/k8s-client-go-examples/examples/mock-watch-events    1.490s
 </code></pre></div></div>
 
 <p>I hope this post will be useful. Would like to hear your reviews, feedback or your experience. 
 Happy programming with Kubernetes!</p>
-
-<p>Find the complete example at <a href="https://github.com/hrishin/k8s-client-go-examples/tree/main/examples/mock-watch-events">https://github.com/hrishin/k8s-client-go-examples/tree/main/examples/mock-watch-events</a></p>
 
   </div><a class="u-url" href="/kubernetes,/client-go/2020/11/24/mock-the-watch-api.html" hidden></a>
 </article>
