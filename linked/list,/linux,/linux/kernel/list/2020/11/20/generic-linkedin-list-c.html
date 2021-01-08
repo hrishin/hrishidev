@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1"><!-- Begin Jekyll SEO tag v2.7.1 -->
+<title>How Linux Kernel implements generic linked list: part 1 | Cognitive Perception</title>
+<meta name="generator" content="Jekyll v4.1.1" />
+<meta property="og:title" content="How Linux Kernel implements generic linked list: part 1" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Circular Doubly Linked List &lt;- - -&gt; is one of the most widely used data structure in the Linux system implementation. It holds importance in the scheduling of the processes(RunQueue), the buffers cache, device driver implementation, and so on." />
+<meta property="og:description" content="Circular Doubly Linked List &lt;- - -&gt; is one of the most widely used data structure in the Linux system implementation. It holds importance in the scheduling of the processes(RunQueue), the buffers cache, device driver implementation, and so on." />
+<link rel="canonical" href="http://localhost:4000/linked/list,/linux,/linux/kernel/list/2020/11/20/generic-linkedin-list-c.html" />
+<meta property="og:url" content="http://localhost:4000/linked/list,/linux,/linux/kernel/list/2020/11/20/generic-linkedin-list-c.html" />
+<meta property="og:site_name" content="Cognitive Perception" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2020-11-20T22:12:12+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="How Linux Kernel implements generic linked list: part 1" />
+<script type="application/ld+json">
+{"mainEntityOfPage":{"@type":"WebPage","@id":"http://localhost:4000/linked/list,/linux,/linux/kernel/list/2020/11/20/generic-linkedin-list-c.html"},"url":"http://localhost:4000/linked/list,/linux,/linux/kernel/list/2020/11/20/generic-linkedin-list-c.html","headline":"How Linux Kernel implements generic linked list: part 1","datePublished":"2020-11-20T22:12:12+00:00","dateModified":"2020-11-20T22:12:12+00:00","description":"Circular Doubly Linked List &lt;- - -&gt; is one of the most widely used data structure in the Linux system implementation. It holds importance in the scheduling of the processes(RunQueue), the buffers cache, device driver implementation, and so on.","@type":"BlogPosting","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css"><link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Cognitive Perception" /></head>
+<body><header class="site-header" role="banner">
+
+  <div class="wrapper"><a class="site-title" rel="author" href="/">Cognitive Perception</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger" />
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewBox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"/>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">$ whoami</a></div>
+      </nav></div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">How Linux Kernel implements generic linked list: part 1</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2020-11-20T22:12:12+00:00" itemprop="datePublished">Nov 20, 2020
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p><code class="language-plaintext highlighter-rouge">Circular Doubly  Linked List</code> &lt;- - -&gt; is one of the most widely used <code class="language-plaintext highlighter-rouge">data structure</code> in the Linux system implementation. It holds importance in the scheduling of the processes(RunQueue),  the buffers cache, device driver implementation, and so on.</p>
+
+<p>This is a 3 part series.</p>
+<ul>
+  <li>In the 1st part, we will take a look at building blocks of <code class="language-plaintext highlighter-rouge">circular doubly  linked list</code> in the Linux kernel.</li>
+  <li>The 2nd part will focus on implementing the basic list routines and implement the complete routine.</li>
+  <li>The 3rd part will focus on why generic list implementation is inevitably important in the process scheduling context, hence it would help in appreciating how such implementation help in optimising the process scheduling.</li>
+</ul>
+
+<h2 id="assumptions-and-notes">Assumptions and notes</h2>
+<ul>
+  <li>Understands the basics of linked list data structure.</li>
+  <li>For the intent of the learning, the majority of the <code class="language-plaintext highlighter-rouge">C</code> code snippets in this post is not following the Linux code style guide.</li>
+  <li>Good grasp on the <code class="language-plaintext highlighter-rouge">C</code> pointers.</li>
+</ul>
+
+<h2 id="why-generic-linked-list">Why generic linked list?</h2>
+<p>The <code class="language-plaintext highlighter-rouge">linked list</code> is quite a common data structure used through out the Linux implementation. Let’s take a look at the simple search result in the <a href="https://github.com/torvalds/linux/search?q=INIT_LIST_HEAD">Linux kernel source code</a> which initialize the <code class="language-plaintext highlighter-rouge">linked list</code>. Over the period, Linux community has implemented unified and generic API’s hence the code duplication can be reduced.
+Overall <code class="language-plaintext highlighter-rouge">linked list</code> has a finite set of routines such as <code class="language-plaintext highlighter-rouge">initialize</code>, <code class="language-plaintext highlighter-rouge">add_entry</code>, <code class="language-plaintext highlighter-rouge">remove_entry</code> and more in the Linux context. Hence it makes sense to generalize the <code class="language-plaintext highlighter-rouge">linked list</code> implementation while the data type it holds varies.</p>
+
+<h2 id="whats-the-fundamental-problem-with-the-concrete-type-approach">What’s the fundamental problem with the concrete type approach?</h2>
+<p>The <code class="language-plaintext highlighter-rouge">Node</code> structure; it’s tightly bind <code class="language-plaintext highlighter-rouge">data</code> and <code class="language-plaintext highlighter-rouge">links</code> fields together.</p>
+
+<p>Example: Let’s consider the <code class="language-plaintext highlighter-rouge">Node</code> structure of rudimentary <code class="language-plaintext highlighter-rouge">linked list</code> which holds the process list of the type <code class="language-plaintext highlighter-rouge">task_t</code>.
+For a simplicity, I’ve dropped the other details from the real <code class="language-plaintext highlighter-rouge">task_t</code> structure.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">task_t</span> <span class="p">{</span>
+    <span class="c1">//data properties</span>
+    <span class="kt">int</span> <span class="n">pid</span><span class="p">;</span>
+
+    <span class="c1">//link properties</span>
+    <span class="n">task_t</span> <span class="o">*</span><span class="n">prev</span><span class="p">;</span>
+    <span class="n">task_t</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+<p>Now <code class="language-plaintext highlighter-rouge">prev</code> and <code class="language-plaintext highlighter-rouge">next</code> are <code class="language-plaintext highlighter-rouge">pointers to the structure of concrete type task_t</code>. Hence it could not point to the data of any other type.</p>
+
+<p>Hence in order to make the list implementation generic, link pointers needs to be independent of data type it points to.</p>
+
+<h2 id="solution-separate-the-links-from-the-structure-implementation">Solution: Separate the links from the structure implementation</h2>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">list_head</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">prev</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div></div>
+<p>Hence <code class="language-plaintext highlighter-rouge">linked list</code> could be formed in the following way. Its generic enough now.</p>
+
+<p><img src="/assets/list_part1_1.PNG" alt="basic list head" /></p>
+
+<h2 id="problem-whats-the-use-of-such-structure-and-how-to-associate-the-data-types">Problem: What’s the use of such structure and how to associate the data types?</h2>
+
+<p>What if a structure embed <code class="language-plaintext highlighter-rouge">list_head</code> as a field of <code class="language-plaintext highlighter-rouge">type struct</code>? In the case of <code class="language-plaintext highlighter-rouge">task_t</code> it would look like:</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">struct</span> <span class="n">task_t</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">pid</span><span class="p">;</span>
+
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">tasks</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><img src="/assets/list_part1_2.PNG" alt="task_t list illustration and memory layout" /></p>
+
+<p>Then despite this how to get the handle of the data type <code class="language-plaintext highlighter-rouge">task_t</code>?</p>
+
+<h2 id="solution-calculate-the-offset-of-list_headnext-to-trace-back-the-base-address-of-the-struct">Solution: Calculate the offset of <code class="language-plaintext highlighter-rouge">list_head.next</code> to trace back the base address of the struct</h2>
+
+<p>The entry in the list of <code class="language-plaintext highlighter-rouge">task_t</code> is a structure. Hence memory allocated to fields of type <code class="language-plaintext highlighter-rouge">task_t</code> is contiguous. 
+Then, how about calculating the memory offset of the <code class="language-plaintext highlighter-rouge">tasks.next</code>( or <code class="language-plaintext highlighter-rouge">tasks</code>) and tracing back the <code class="language-plaintext highlighter-rouge">base address</code> of the <code class="language-plaintext highlighter-rouge">task_t</code> data to which this <code class="language-plaintext highlighter-rouge">tasks.next</code> associated with?</p>
+
+<p>The following example demonstrates the calculating offset of any field relative to its structure.</p>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// offset.c</span>
+
+<span class="cp">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+</span>
+<span class="cp">#define OFFSET_OF(T, x) (unsigned long int) ((&amp;(((T*)0) -&gt; x))) //the macro calculate the offset of field x with respect to struct T
+</span>
+<span class="k">struct</span> <span class="n">list_head</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">prev</span><span class="p">,</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="n">task_t</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">pid</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">tasks</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kt">unsigned</span> <span class="kt">long</span> <span class="kt">int</span> <span class="n">off_pid</span><span class="p">,</span> <span class="n">off_tasks</span><span class="p">;</span>
+
+    <span class="n">off_pid</span> <span class="o">=</span> <span class="n">OFFSET_OF</span><span class="p">(</span><span class="k">struct</span> <span class="n">task_t</span><span class="p">,</span> <span class="n">pid</span><span class="p">);</span>
+    <span class="n">off_tasks</span> <span class="o">=</span> <span class="n">OFFSET_OF</span><span class="p">(</span><span class="k">struct</span> <span class="n">task_t</span><span class="p">,</span> <span class="n">tasks</span><span class="p">.</span><span class="n">next</span><span class="p">);</span>
+    
+    <span class="n">printf</span><span class="p">(</span><span class="s">"task_t.pid offset    %li</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">off_pid</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"task_t.tasks.next offset  %li</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">off_tasks</span><span class="p">);</span>
+</code></pre></div></div>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>gcc <span class="nt">-o</span> offset offset.c
+<span class="nv">$ </span>./offset              
+  task_t.pid offset    0
+  task_t.tasks offset  16
+</code></pre></div></div>
+
+<p>The following example illustrate how address are assigned to the field.</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">//address.c</span>
+
+<span class="cp">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+</span>
+<span class="k">struct</span> <span class="n">list_head</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">prev</span><span class="p">,</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">struct</span> <span class="n">task_t</span> <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">pid</span><span class="p">;</span>
+    <span class="k">struct</span> <span class="n">list_head</span> <span class="n">tasks</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">task_t</span> <span class="n">t1</span><span class="p">;</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">"%lu size pid</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">t1</span><span class="p">.</span><span class="n">pid</span><span class="p">));</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"%lu size prev</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">t1</span><span class="p">.</span><span class="n">tasks</span><span class="p">.</span><span class="n">prev</span><span class="p">));</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"%lu size next</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">t1</span><span class="p">.</span><span class="n">tasks</span><span class="p">.</span><span class="n">next</span><span class="p">));</span>
+
+    <span class="n">printf</span><span class="p">(</span><span class="s">"%p address of pid</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">t1</span><span class="p">.</span><span class="n">pid</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"%p address of prev</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">t1</span><span class="p">.</span><span class="n">tasks</span><span class="p">.</span><span class="n">prev</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"%p address of next</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">t1</span><span class="p">.</span><span class="n">tasks</span><span class="p">.</span><span class="n">next</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>gcc <span class="nt">-o</span> address address.c
+<span class="nv">$ </span>./address
+  4 size pid
+  8 size prev
+  8 size next
+  140732870370816 address of pid
+  140732870370824 address of prev
+  140732870370832 address of next
+</code></pre></div></div>
+<p>Note: that <code class="language-plaintext highlighter-rouge">pid</code> field has the size 4 bytes however the next address start after 8 bytes. It’s because the compiler in this case adds the padding of 4 bytes, so the data can be accessed in less number of instructions(internal memory access optimization).</p>
+
+<p>Now let’s, get the handle to <code class="language-plaintext highlighter-rouge">task_t</code> data using one macro called <code class="language-plaintext highlighter-rouge">container_of</code> by tracing the base address type <code class="language-plaintext highlighter-rouge">task_t</code>. 
+The following program illustrates how <code class="language-plaintext highlighter-rouge">CONTAINER_OF</code> and <code class="language-plaintext highlighter-rouge">OFFSET_OF</code> macros are used together.</p>
+
+<pre><code class="language-C">// generic_list_node.c
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+#define OFFSET_OF(T, x) (unsigned long int) ((&amp;(((T*)0) -&gt; x)))
+#define CONTAINER_OF(x, T, name) (T*)((((char*)(x)) - OFFSET_OF(T,name)))
+
+struct list_head {
+    struct list_head *prev, *next;
+};
+
+struct task_t {
+    int pid;
+    struct list_head tasks;
+};
+
+int main() {   
+    //~initialize list 
+    struct list_head tasks_list; 
+
+    struct task_t t1;
+    t1.pid = 1274;
+
+    //~insert node
+    tasks_list.next = &amp;t1.tasks;
+    tasks_list.prev = &amp;t1.tasks;
+    t1.tasks.next = &amp;tasks_list;
+    t1.tasks.prev = &amp;tasks_list;
+    
+    struct task_t *task = CONTAINER_OF(tasks_list.next, struct task_t, tasks);
+    printf("original task address: %p,  retrieved task address: %p\n", &amp;t1, task);
+    
+    printf("pid %d\n", task -&gt; pid);
+
+    return 0;
+}
+</code></pre>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>gcc <span class="nt">-o</span> node_access generic_list_node.c
+<span class="nv">$ </span>./node_access              
+  original task address: 0x7ffee7dfc5f0, retrieved task address: 0x7ffee7dfc5f0
+  pid 1274
+</code></pre></div></div>
+
+<h2 id="putting-this-together">Putting this together</h2>
+
+<p>This is how the base of <code class="language-plaintext highlighter-rouge">circular doubly linked list</code> is built in the Linux Kernel. Please note that this is still a rudimentary implementation of the Kernel list.
+On can refer the actual implementation of the <code class="language-plaintext highlighter-rouge">container_of</code> macro <a href="https://github.com/torvalds/linux/blob/master/include/linux/kernel.h#L692">kernel.h</a> and <code class="language-plaintext highlighter-rouge">offsetof</code> macro <a href="https://elixir.bootlin.com/linux/latest/source/tools/include/linux/kernel.h#L23">kernel.h</a></p>
+
+<p>In the next part, let’s use this base then implement basic list routines.</p>
+
+  </div><a class="u-url" href="/linked/list,/linux,/linux/kernel/list/2020/11/20/generic-linkedin-list-c.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Cognitive Perception</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Cognitive Perception</li><li><a class="u-email" href="mailto:hrishishinde.p@gmail.com">hrishishinde.p@gmail.com</a></li></ul>
+      </div>
+
+      <div class="footer-col footer-col-2"><ul class="social-media-list"><li><a href="https://github.com/hrishin"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">hrishin</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>Kubernetes and containers, Distributed systems, Cloud computing, Unix/Linux systems,  Data structures and algorithms.</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>
