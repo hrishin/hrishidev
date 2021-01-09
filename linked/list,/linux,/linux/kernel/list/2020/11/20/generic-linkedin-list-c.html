@@ -215,11 +215,11 @@ int main() {
     struct task_t t1;
     t1.pid = 1274;
 
-    //~insert node
-    tasks_list.next = &amp;t1.tasks;
-    tasks_list.prev = &amp;t1.tasks;
+    //~insert task_t entry
     t1.tasks.next = &amp;tasks_list;
     t1.tasks.prev = &amp;tasks_list;
+    tasks_list.next = &amp;t1.tasks;
+    tasks_list.prev = &amp;t1.tasks;
     
     struct task_t *task = CONTAINER_OF(tasks_list.next, struct task_t, tasks);
     printf("original task address: %p,  retrieved task address: %p\n", &amp;t1, task);
@@ -234,6 +234,8 @@ int main() {
   original task address: 0x7ffee7dfc5f0, retrieved task address: 0x7ffee7dfc5f0
   pid 1274
 </code></pre></div></div>
+<p>Once the <code class="language-plaintext highlighter-rouge">list</code> is build on this ground, <code class="language-plaintext highlighter-rouge">tasks list</code> would look like as per the following diagram.
+<img src="/assets/list_part1_3.PNG" alt="task_t list illustration" /></p>
 
 <h2 id="putting-this-together">Putting this together</h2>
 

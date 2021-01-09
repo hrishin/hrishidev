@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.1.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2021-01-08T21:34:43+00:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Cognitive Perception</title><subtitle>Kubernetes/OpenShift and containers, Distributed systems, Cloud computing, Unix/Linux systems,  Data structures and algorithms.</subtitle><entry><title type="html">Unit test client-go watch API to mock the watch events in Kubernetes</title><link href="http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api.html" rel="alternate" type="text/html" title="Unit test client-go watch API to mock the watch events in Kubernetes" /><published>2020-11-24T21:00:12+00:00</published><updated>2020-11-24T21:00:12+00:00</updated><id>http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api</id><content type="html" xml:base="http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api.html">&lt;h1 id=&quot;unit-test-client-go-watch-api-to-mock-the-watch-events-using-client-go-testing-package&quot;&gt;Unit test client-go watch API to mock the watch events using client-go testing package&lt;/h1&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.1.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2021-01-09T08:44:07+00:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Cognitive Perception</title><subtitle>Kubernetes/OpenShift and containers, Distributed systems, Cloud computing, Unix/Linux systems,  Data structures and algorithms.</subtitle><entry><title type="html">Unit test client-go watch API to mock the watch events in Kubernetes</title><link href="http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api.html" rel="alternate" type="text/html" title="Unit test client-go watch API to mock the watch events in Kubernetes" /><published>2020-11-24T21:00:12+00:00</published><updated>2020-11-24T21:00:12+00:00</updated><id>http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api</id><content type="html" xml:base="http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api.html">&lt;h1 id=&quot;unit-test-client-go-watch-api-to-mock-the-watch-events-using-client-go-testing-package&quot;&gt;Unit test client-go watch API to mock the watch events using client-go testing package&lt;/h1&gt;
 
 &lt;p&gt;Sometimes we encounter the case where we need to simulate the watch events in 
 order to test code that uses client-go &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;watch&lt;/code&gt; API in the Kubernetes world.&lt;/p&gt;
@@ -273,11 +273,11 @@ int main() {
     struct task_t t1;
     t1.pid = 1274;
 
-    //~insert node
-    tasks_list.next = &amp;amp;t1.tasks;
-    tasks_list.prev = &amp;amp;t1.tasks;
+    //~insert task_t entry
     t1.tasks.next = &amp;amp;tasks_list;
     t1.tasks.prev = &amp;amp;tasks_list;
+    tasks_list.next = &amp;amp;t1.tasks;
+    tasks_list.prev = &amp;amp;t1.tasks;
     
     struct task_t *task = CONTAINER_OF(tasks_list.next, struct task_t, tasks);
     printf(&quot;original task address: %p,  retrieved task address: %p\n&quot;, &amp;amp;t1, task);
@@ -292,6 +292,8 @@ int main() {
   original task address: 0x7ffee7dfc5f0, retrieved task address: 0x7ffee7dfc5f0
   pid 1274
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;Once the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;list&lt;/code&gt; is build on this ground, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tasks list&lt;/code&gt; would look like as per the following diagram.
+&lt;img src=&quot;/assets/list_part1_3.PNG&quot; alt=&quot;task_t list illustration&quot; /&gt;&lt;/p&gt;
 
 &lt;h2 id=&quot;putting-this-together&quot;&gt;Putting this together&lt;/h2&gt;
 
