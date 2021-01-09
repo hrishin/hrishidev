@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.1.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2021-01-09T12:40:00+00:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Cognitive Perception</title><subtitle>Kubernetes/OpenShift and containers, Distributed systems, Cloud computing, Unix/Linux systems,  Data structures and algorithms.</subtitle><entry><title type="html">Unit test client-go watch API to mock the watch events in Kubernetes</title><link href="http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api.html" rel="alternate" type="text/html" title="Unit test client-go watch API to mock the watch events in Kubernetes" /><published>2020-11-24T21:00:12+00:00</published><updated>2020-11-24T21:00:12+00:00</updated><id>http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api</id><content type="html" xml:base="http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api.html">&lt;h1 id=&quot;unit-test-client-go-watch-api-to-mock-the-watch-events-using-client-go-testing-package&quot;&gt;Unit test client-go watch API to mock the watch events using client-go testing package&lt;/h1&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.1.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2021-01-09T12:53:36+00:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Cognitive Perception</title><subtitle>Kubernetes/OpenShift and containers, Distributed systems, Cloud computing, Unix/Linux systems,  Data structures and algorithms.</subtitle><entry><title type="html">Unit test client-go watch API to mock the watch events in Kubernetes</title><link href="http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api.html" rel="alternate" type="text/html" title="Unit test client-go watch API to mock the watch events in Kubernetes" /><published>2020-11-24T21:00:12+00:00</published><updated>2020-11-24T21:00:12+00:00</updated><id>http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api</id><content type="html" xml:base="http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api.html">&lt;h1 id=&quot;unit-test-client-go-watch-api-to-mock-the-watch-events-using-client-go-testing-package&quot;&gt;Unit test client-go watch API to mock the watch events using client-go testing package&lt;/h1&gt;
 
 &lt;p&gt;Sometimes we encounter the case where we need to simulate the watch events in 
 order to test code that uses client-go &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;watch&lt;/code&gt; API in the Kubernetes world.&lt;/p&gt;
@@ -252,44 +252,44 @@ Then, how about calculating the memory &lt;code class=&quot;language-plaintext h
 &lt;p&gt;Now let’s, get the handle to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt; data using one macro called &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;container_of&lt;/code&gt; by tracing the base address type &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt;. 
 The following program illustrates how &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CONTAINER_OF&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;OFFSET_OF&lt;/code&gt; macros are used together.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-C&quot;&gt;// generic_list_node.c
+&lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;// generic_list_node.c&lt;/span&gt;
 
-#include &amp;lt;stdio.h&amp;gt;
+&lt;span class=&quot;cp&quot;&gt;#include &amp;lt;stdio.h&amp;gt;
 #include &amp;lt;stdlib.h&amp;gt;
-
-#define OFFSET_OF(T, x) (unsigned long long int) ((&amp;amp;(((T*)0) -&amp;gt; x)))
+&lt;/span&gt;
+&lt;span class=&quot;cp&quot;&gt;#define OFFSET_OF(T, x) (unsigned long long int) ((&amp;amp;(((T*)0) -&amp;gt; x)))
 #define CONTAINER_OF(x, T, name) (T*)((((char*)(x)) - OFFSET_OF(T,name)))
+&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;list_head&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;list_head&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prev&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
 
-struct list_head {
-    struct list_head *prev, *next;
-};
+&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;task_t&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+    &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;list_head&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tasks&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
 
-struct task_t {
-    int pid;
-    struct list_head tasks;
-};
+&lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;main&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;   
+    &lt;span class=&quot;c1&quot;&gt;//~initialize list &lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;list_head&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tasks_list&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; 
 
-int main() {   
-    //~initialize list 
-    struct list_head tasks_list; 
+    &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;task_t&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;t1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;t1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pid&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1274&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 
-    struct task_t t1;
-    t1.pid = 1274;
-
-    //~insert task_t entry
-    t1.tasks.next = &amp;amp;tasks_list;
-    t1.tasks.prev = &amp;amp;tasks_list;
-    tasks_list.next = &amp;amp;t1.tasks;
-    tasks_list.prev = &amp;amp;t1.tasks;
+    &lt;span class=&quot;c1&quot;&gt;//~insert task_t entry&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;t1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tasks&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tasks_list&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;t1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tasks&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prev&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tasks_list&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;tasks_list&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;t1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tasks&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;tasks_list&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prev&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;t1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tasks&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
     
-    struct task_t *task = CONTAINER_OF(tasks_list.next, struct task_t, tasks);
-    printf(&quot;original task address: %p,  retrieved task address: %p\n&quot;, &amp;amp;t1, task);
+    &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;task_t&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;task&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;CONTAINER_OF&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tasks_list&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;task_t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;tasks&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;original task address: %p,  retrieved task address: %p&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;t1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;task&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
     
-    printf(&quot;pid %d\n&quot;, task -&amp;gt; pid);
+    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;pid %d&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;task&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;-&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
 
-    return 0;
-}
-&lt;/code&gt;&lt;/pre&gt;
+    &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 &lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;gcc &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; node_access generic_list_node.c
 &lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;./node_access              
   original task address: 0x7ffee7dfc5f0, retrieved task address: 0x7ffee7dfc5f0
