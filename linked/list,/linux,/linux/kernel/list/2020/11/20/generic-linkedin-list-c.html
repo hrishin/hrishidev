@@ -116,7 +116,7 @@ For a simplicity, I’ve dropped the other details from the real <code class="la
 Then, how about calculating the memory <code class="language-plaintext highlighter-rouge">offset</code> of the <code class="language-plaintext highlighter-rouge">tasks</code>( or <code class="language-plaintext highlighter-rouge">tasks.next</code> or <code class="language-plaintext highlighter-rouge">tasks.prev</code>) and tracing back the <code class="language-plaintext highlighter-rouge">base address</code> of the <code class="language-plaintext highlighter-rouge">task_t</code> data in which  <code class="language-plaintext highlighter-rouge">tasks</code> field <code class="language-plaintext highlighter-rouge">contains</code>?</p>
 
 <p>The following example demonstrates the calculating offset of any field relative to its structure.</p>
-<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// offset.c</span>
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">/// offset.c</span>
 
 <span class="cp">#include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
@@ -140,11 +140,14 @@ Then, how about calculating the memory <code class="language-plaintext highlight
     
     <span class="n">printf</span><span class="p">(</span><span class="s">"task_t.pid offset    %li</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">off_pid</span><span class="p">);</span>
     <span class="n">printf</span><span class="p">(</span><span class="s">"task_t.tasks offset  %li</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">off_tasks</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
 </code></pre></div></div>
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>gcc <span class="nt">-o</span> offset offset.c
 <span class="nv">$ </span>./offset              
   task_t.pid offset    0
-  task_t.tasks offset  16
+  task_t.tasks offset  8
 </code></pre></div></div>
 
 <p>The following example illustrate how address are assigned to the field.</p>
