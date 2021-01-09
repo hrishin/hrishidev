@@ -110,10 +110,10 @@ For a simplicity, I’ve dropped the other details from the real <code class="la
 
 <p>Then despite this how to get the handle of the data type <code class="language-plaintext highlighter-rouge">task_t</code>?</p>
 
-<h2 id="solution-calculate-the-offset-of-list_headnext-to-trace-back-the-base-address-of-the-struct">Solution: Calculate the offset of <code class="language-plaintext highlighter-rouge">list_head.next</code> to trace back the base address of the struct</h2>
+<h2 id="solution-calculate-the-offset-of-list_head-to-trace-back-the-base-address-of-the-struct">Solution: Calculate the offset of <code class="language-plaintext highlighter-rouge">list_head</code> to trace back the base address of the struct</h2>
 
 <p>The entry in the list of <code class="language-plaintext highlighter-rouge">task_t</code> is a structure. Hence memory allocated to fields of type <code class="language-plaintext highlighter-rouge">task_t</code> is contiguous. 
-Then, how about calculating the memory offset of the <code class="language-plaintext highlighter-rouge">tasks.next</code>( or <code class="language-plaintext highlighter-rouge">tasks</code>) and tracing back the <code class="language-plaintext highlighter-rouge">base address</code> of the <code class="language-plaintext highlighter-rouge">task_t</code> data to which this <code class="language-plaintext highlighter-rouge">tasks.next</code> associated with?</p>
+Then, how about calculating the memory <code class="language-plaintext highlighter-rouge">offset</code> of the <code class="language-plaintext highlighter-rouge">tasks</code>( or <code class="language-plaintext highlighter-rouge">tasks.next</code> or <code class="language-plaintext highlighter-rouge">tasks.prev</code>) and tracing back the <code class="language-plaintext highlighter-rouge">base address</code> of the <code class="language-plaintext highlighter-rouge">task_t</code> data in which  <code class="language-plaintext highlighter-rouge">tasks</code> field <code class="language-plaintext highlighter-rouge">contains</code>?</p>
 
 <p>The following example demonstrates the calculating offset of any field relative to its structure.</p>
 <div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// offset.c</span>
@@ -121,7 +121,7 @@ Then, how about calculating the memory offset of the <code class="language-plain
 <span class="cp">#include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
 </span>
-<span class="cp">#define OFFSET_OF(T, x) (unsigned long int) ((&amp;(((T*)0) -&gt; x))) //the macro calculate the offset of field x with respect to struct T
+<span class="cp">#define OFFSET_OF(T, x) (unsigned long long int) ((&amp;(((T*)0) -&gt; x))) //the macro calculate the offset of field x with respect to struct T
 </span>
 <span class="k">struct</span> <span class="n">list_head</span> <span class="p">{</span>
     <span class="k">struct</span> <span class="n">list_head</span> <span class="o">*</span><span class="n">prev</span><span class="p">,</span> <span class="o">*</span><span class="n">next</span><span class="p">;</span>
@@ -136,10 +136,10 @@ Then, how about calculating the memory offset of the <code class="language-plain
     <span class="kt">unsigned</span> <span class="kt">long</span> <span class="kt">int</span> <span class="n">off_pid</span><span class="p">,</span> <span class="n">off_tasks</span><span class="p">;</span>
 
     <span class="n">off_pid</span> <span class="o">=</span> <span class="n">OFFSET_OF</span><span class="p">(</span><span class="k">struct</span> <span class="n">task_t</span><span class="p">,</span> <span class="n">pid</span><span class="p">);</span>
-    <span class="n">off_tasks</span> <span class="o">=</span> <span class="n">OFFSET_OF</span><span class="p">(</span><span class="k">struct</span> <span class="n">task_t</span><span class="p">,</span> <span class="n">tasks</span><span class="p">.</span><span class="n">next</span><span class="p">);</span>
+    <span class="n">off_tasks</span> <span class="o">=</span> <span class="n">OFFSET_OF</span><span class="p">(</span><span class="k">struct</span> <span class="n">task_t</span><span class="p">,</span> <span class="n">tasks</span><span class="p">);</span>
     
     <span class="n">printf</span><span class="p">(</span><span class="s">"task_t.pid offset    %li</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">off_pid</span><span class="p">);</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">"task_t.tasks.next offset  %li</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">off_tasks</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"task_t.tasks offset  %li</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">off_tasks</span><span class="p">);</span>
 </code></pre></div></div>
 <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">$ </span>gcc <span class="nt">-o</span> offset offset.c
 <span class="nv">$ </span>./offset              
@@ -171,7 +171,7 @@ Then, how about calculating the memory offset of the <code class="language-plain
     <span class="n">printf</span><span class="p">(</span><span class="s">"%lu size next</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">t1</span><span class="p">.</span><span class="n">tasks</span><span class="p">.</span><span class="n">next</span><span class="p">));</span>
 
     <span class="n">printf</span><span class="p">(</span><span class="s">"%p address of pid</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">t1</span><span class="p">.</span><span class="n">pid</span><span class="p">);</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s">"%p address of prev</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">t1</span><span class="p">.</span><span class="n">tasks</span><span class="p">.</span><span class="n">prev</span><span class="p">);</span>
+    <span class="n">printf</span><span class="p">(</span><span class="s">"%p address of prev</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">t1</span><span class="p">.</span><span class="n">tasks</span><span class="p">.</span><span class="n">prev</span><span class="p">);</span> <span class="c1">//also same as t1.task</span>
     <span class="n">printf</span><span class="p">(</span><span class="s">"%p address of next</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">t1</span><span class="p">.</span><span class="n">tasks</span><span class="p">.</span><span class="n">next</span><span class="p">);</span>
 
     <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
@@ -196,7 +196,7 @@ The following program illustrates how <code class="language-plaintext highlighte
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
 
-#define OFFSET_OF(T, x) (unsigned long int) ((&amp;(((T*)0) -&gt; x)))
+#define OFFSET_OF(T, x) (unsigned long long int) ((&amp;(((T*)0) -&gt; x)))
 #define CONTAINER_OF(x, T, name) (T*)((((char*)(x)) - OFFSET_OF(T,name)))
 
 struct list_head {
