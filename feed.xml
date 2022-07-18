@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.1.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2021-01-09T12:53:36+00:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">Cognitive Perception</title><subtitle>Kubernetes/OpenShift and containers, Distributed systems, Cloud computing, Unix/Linux systems,  Data structures and algorithms.</subtitle><entry><title type="html">Unit test client-go watch API to mock the watch events in Kubernetes</title><link href="http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api.html" rel="alternate" type="text/html" title="Unit test client-go watch API to mock the watch events in Kubernetes" /><published>2020-11-24T21:00:12+00:00</published><updated>2020-11-24T21:00:12+00:00</updated><id>http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api</id><content type="html" xml:base="http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api.html">&lt;h1 id=&quot;unit-test-client-go-watch-api-to-mock-the-watch-events-using-client-go-testing-package&quot;&gt;Unit test client-go watch API to mock the watch events using client-go testing package&lt;/h1&gt;
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.1.1">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2022-07-18T18:15:00+01:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">tail -f curiosity and experience</title><subtitle>Containers and Kubernetes/OpenShift, Distributed systems, Unix/Linux systems, Data structures and algorithms and Cloud computing.</subtitle><entry><title type="html">Unit test client-go watch API to mock the watch events in Kubernetes</title><link href="http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api.html" rel="alternate" type="text/html" title="Unit test client-go watch API to mock the watch events in Kubernetes" /><published>2020-11-24T21:00:12+00:00</published><updated>2020-11-24T21:00:12+00:00</updated><id>http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api</id><content type="html" xml:base="http://localhost:4000/kubernetes,/client-go/2020/11/24/mock-the-watch-api.html">&lt;h1 id=&quot;unit-test-client-go-watch-api-to-mock-the-watch-events-using-client-go-testing-package&quot;&gt;Unit test client-go watch API to mock the watch events using client-go testing package&lt;/h1&gt;
 
 &lt;p&gt;Sometimes we encounter the case where we need to simulate the watch events in 
 order to test code that uses client-go &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;watch&lt;/code&gt; API in the Kubernetes world.&lt;/p&gt;
@@ -105,32 +105,29 @@ certain workflow for automating repetitive mundane things.&lt;/p&gt;
 &lt;p&gt;Hence I to overcome this challenge I’ve started documenting examples of frequently used API’ and their options.&lt;/p&gt;
 
 &lt;h2 id=&quot;examples&quot;&gt;Examples&lt;/h2&gt;
-&lt;p&gt;One can find all examples at &lt;a href=&quot;https://github.com/hrishin/k8s-client-go-examples&quot;&gt;https://github.com/hrishin/k8s-client-go-examples&lt;/a&gt;&lt;/p&gt;</content><author><name></name></author><category term="kubernetes," /><category term="client-go" /><summary type="html">Background</summary></entry><entry><title type="html">How Linux Kernel implements generic linked list: part 1</title><link href="http://localhost:4000/linked/list,/linux,/linux/kernel/list/2020/11/20/generic-linkedin-list-c.html" rel="alternate" type="text/html" title="How Linux Kernel implements generic linked list: part 1" /><published>2020-11-20T22:12:12+00:00</published><updated>2020-11-20T22:12:12+00:00</updated><id>http://localhost:4000/linked/list,/linux,/linux/kernel/list/2020/11/20/generic-linkedin-list-c</id><content type="html" xml:base="http://localhost:4000/linked/list,/linux,/linux/kernel/list/2020/11/20/generic-linkedin-list-c.html">&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Circular Doubly  Linked List&lt;/code&gt; &amp;lt;- - -&amp;gt; is one of the most widely used &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;data structure&lt;/code&gt; in the Linux system implementation. It holds importance in the scheduling of the processes(RunQueue),  the buffers cache, device driver implementation, and so on.&lt;/p&gt;
+&lt;p&gt;One can find all examples at &lt;a href=&quot;https://github.com/hrishin/k8s-client-go-examples&quot;&gt;https://github.com/hrishin/k8s-client-go-examples&lt;/a&gt;&lt;/p&gt;</content><author><name></name></author><category term="kubernetes," /><category term="client-go" /><summary type="html">Background</summary></entry><entry><title type="html">How Linux Kernel implements generic linked list: part 1</title><link href="http://localhost:4000/linked/list,/linux,/linux/kernel/list/2020/11/20/generic-linkedin-list-c.html" rel="alternate" type="text/html" title="How Linux Kernel implements generic linked list: part 1" /><published>2020-11-20T22:12:12+00:00</published><updated>2020-11-20T22:12:12+00:00</updated><id>http://localhost:4000/linked/list,/linux,/linux/kernel/list/2020/11/20/generic-linkedin-list-c</id><content type="html" xml:base="http://localhost:4000/linked/list,/linux,/linux/kernel/list/2020/11/20/generic-linkedin-list-c.html">&lt;p&gt;Circular Doubly  Linked List &amp;lt;- - -&amp;gt; is one of the most widely used data structure in the Linux system implementation. It holds importance in the scheduling of the processes(RunQueue), the buffers cache, device driver implementation, and so on.&lt;/p&gt;
 
 &lt;p&gt;This is a 3 part series.&lt;/p&gt;
 &lt;ul&gt;
-  &lt;li&gt;In the 1st part, we will take a look at building blocks of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;circular doubly  linked list&lt;/code&gt; in the Linux kernel.&lt;/li&gt;
-  &lt;li&gt;The 2nd part will focus on implementing the basic list routines and implement the complete routine.&lt;/li&gt;
-  &lt;li&gt;The 3rd part will focus on why generic list implementation is inevitably important in the process scheduling context, hence it would help in appreciating how such implementation help in optimising the process scheduling.&lt;/li&gt;
+  &lt;li&gt;In the 1st part, we will take a look at building blocks of circular doubly  linked list in the Linux kernel.&lt;/li&gt;
+  &lt;li&gt;The 2nd part will focus on implementing essential list routines.&lt;/li&gt;
+  &lt;li&gt;The 3rd part will focus on why such a generic list implementation is important in the process management context, hence it would help in appreciating optimizing process scheduling.&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h2 id=&quot;assumptions-and-notes&quot;&gt;Assumptions and notes&lt;/h2&gt;
+&lt;h2 id=&quot;assumptions-and-notes-for-the-readers&quot;&gt;Assumptions and notes for the readers&lt;/h2&gt;
 &lt;ul&gt;
-  &lt;li&gt;Understands the basics of linked list data structure.&lt;/li&gt;
-  &lt;li&gt;For the intent of the learning, the majority of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C&lt;/code&gt; code snippets in this post is not following the Linux code style guide.&lt;/li&gt;
+  &lt;li&gt;Understanding the basics of linked list data structure.&lt;/li&gt;
   &lt;li&gt;Good grasp on the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C&lt;/code&gt; pointers.&lt;/li&gt;
+  &lt;li&gt;For the intent of the learning, the majority of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;C&lt;/code&gt; code snippets in this post is not following the Linux code style guide.&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h2 id=&quot;why-generic-linked-list&quot;&gt;Why generic linked list?&lt;/h2&gt;
-&lt;p&gt;The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;linked list&lt;/code&gt; is quite a common data structure used through out the Linux implementation. Let’s take a look at the simple search result in the &lt;a href=&quot;https://github.com/torvalds/linux/search?q=INIT_LIST_HEAD&quot;&gt;Linux kernel source code&lt;/a&gt; which initialize the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;linked list&lt;/code&gt;. Over the period, Linux community has implemented unified and generic API’s hence the code duplication can be reduced.
-Overall &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;linked list&lt;/code&gt; has a finite set of routines such as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;initialize&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;add_entry&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;remove_entry&lt;/code&gt; and more in the Linux context. Hence it makes sense to generalize the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;linked list&lt;/code&gt; implementation while the data type it holds varies.&lt;/p&gt;
+&lt;p&gt;The linked list is quite a common data structure used through out the Linux implementation. Let’s take a look at the simple search result in the &lt;a href=&quot;https://github.com/torvalds/linux/search?q=INIT_LIST_HEAD&quot;&gt;Linux kernel source code&lt;/a&gt; which initialize the linked list.
+Overall linked list has a finite set of routines such as &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;initialize&lt;/code&gt;, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;add_entry&lt;/code&gt;,&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;remove_entry&lt;/code&gt; and more in the Linux’s context. Hence it makes sense to generalize the linked list implementation such that data type it holds can vary.&lt;/p&gt;
 
 &lt;h2 id=&quot;whats-the-fundamental-problem-with-the-concrete-type-approach&quot;&gt;What’s the fundamental problem with the concrete type approach?&lt;/h2&gt;
-&lt;p&gt;The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Node&lt;/code&gt; structure; it’s tightly bind &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;data&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;links&lt;/code&gt; fields together.&lt;/p&gt;
-
-&lt;p&gt;Example: Let’s consider the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Node&lt;/code&gt; structure of rudimentary &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;linked list&lt;/code&gt; which holds the process list of the type &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt;.
-For a simplicity, I’ve dropped the other details from the real &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt; structure.&lt;/p&gt;
-
+&lt;p&gt;For example, let’s consider a &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Node&lt;/code&gt; structure of rudimentary linked list which holds the process list of the type &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt;.
+For a simplicity, we’ve dropped the other details from the real &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt; structure.&lt;/p&gt;
 &lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;task_t&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
     &lt;span class=&quot;c1&quot;&gt;//data properties&lt;/span&gt;
     &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
@@ -140,9 +137,9 @@ For a simplicity, I’ve dropped the other details from the real &lt;code class=
     &lt;span class=&quot;n&quot;&gt;task_t&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;Now &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;prev&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;next&lt;/code&gt; are &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;pointers to the structure of concrete type task_t&lt;/code&gt;. Hence it could not point to the data of any other type.&lt;/p&gt;
-
-&lt;p&gt;Hence in order to make the list implementation generic, link pointers needs to be independent of data type it points to.&lt;/p&gt;
+&lt;p&gt;The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt;(Node) structure, it tightly binds &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;data&lt;/code&gt;(pid) and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;links&lt;/code&gt;(prev, next) fields together. Now &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;prev&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;next&lt;/code&gt; are pointers to the structure of concrete type &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt;. Hence it could not point to the data of any type other than &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt;.
+Hence in order to make the list implementation generic to hold any data type, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;links&lt;/code&gt; pointers needs to be independent of data type it points to. It means is should be able to point any addresses of any data type or &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;struct&lt;/code&gt; entity.
+One option is to use a pointer to the  type void &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;*void&lt;/code&gt;, however the tradeoff with approach is loosing the type safety. Is there any other way?&lt;/p&gt;
 
 &lt;h2 id=&quot;solution-separate-the-links-from-the-structure-implementation&quot;&gt;Solution: Separate the links from the structure implementation&lt;/h2&gt;
 &lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;list_head&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
@@ -150,13 +147,14 @@ For a simplicity, I’ve dropped the other details from the real &lt;code class=
     &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;list_head&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;Hence &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;linked list&lt;/code&gt; could be formed in the following way. Its generic enough now.&lt;/p&gt;
+&lt;p&gt;Lets think of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;links&lt;/code&gt; pointers role, its pointing to the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;next&lt;/code&gt; or &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;previous&lt;/code&gt; node in list.
+So what if we construct the links as a single struct which can point to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;next&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;previous&lt;/code&gt; links only? Hence the linked list could be formed as per the following diagram way. It’s generic enough now to be part of any node or struct.&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/assets/list_part1_1.PNG&quot; alt=&quot;basic list head&quot; /&gt;&lt;/p&gt;
 
-&lt;h2 id=&quot;problem-whats-the-use-of-such-structure-and-how-to-associate-the-data-types&quot;&gt;Problem: What’s the use of such structure and how to associate the data types?&lt;/h2&gt;
+&lt;h2 id=&quot;problem-whats-the-use-of-such-structure-and-how-to-associate-such-links-and-data-types&quot;&gt;Problem: What’s the use of such structure and how to associate such links and data types?&lt;/h2&gt;
 
-&lt;p&gt;What if a structure embed &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;list_head&lt;/code&gt; as a field of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;type struct&lt;/code&gt;? In the case of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt; it would look like:&lt;/p&gt;
+&lt;p&gt;What if a node struct embed &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;list_head&lt;/code&gt; as a field? In the case of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt; it would look like:&lt;/p&gt;
 &lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;task_t&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
     &lt;span class=&quot;kt&quot;&gt;int&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;pid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 
@@ -166,23 +164,29 @@ For a simplicity, I’ve dropped the other details from the real &lt;code class=
 
 &lt;p&gt;&lt;img src=&quot;/assets/list_part1_2.PNG&quot; alt=&quot;task_t list illustration and memory layout&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;Then despite this how to get the handle of the data type &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt;?&lt;/p&gt;
+&lt;p&gt;Then despite this how to get the handle of the data type &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt; from list node field &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tasks&lt;/code&gt;(links)?&lt;/p&gt;
 
-&lt;h2 id=&quot;solution-calculate-the-offset-of-list_head-to-trace-back-the-base-address-of-the-struct&quot;&gt;Solution: Calculate the offset of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;list_head&lt;/code&gt; to trace back the base address of the struct&lt;/h2&gt;
+&lt;h2 id=&quot;solution-calculate-the-offset-of-tasks-to-trace-back-the-base-address-of-the-struct-task_t-instance&quot;&gt;Solution: Calculate the offset of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tasks&lt;/code&gt; to trace back the base address of the struct &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt; instance&lt;/h2&gt;
 
-&lt;p&gt;The entry in the list of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt; is a structure. Hence memory allocated to fields of type &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt; is contiguous. 
-Then, how about calculating the memory &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;offset&lt;/code&gt; of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tasks&lt;/code&gt;( or &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tasks.next&lt;/code&gt; or &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tasks.prev&lt;/code&gt;) and tracing back the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;base address&lt;/code&gt; of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt; data in which  &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tasks&lt;/code&gt; field &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;contains&lt;/code&gt;?&lt;/p&gt;
+&lt;p&gt;The entry or node in the linked list of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt; is a structure. Hence memory allocated to fields of type &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt; is contiguous which is assured. 
+Then, how about tracing back the base address of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt; data(instance) by calculating the relative memory offset of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tasks&lt;/code&gt;( or &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tasks.prev&lt;/code&gt; or &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tasks.next&lt;/code&gt; which is 8 or 16 bytes on 64 bit processor respectively) to the base address of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt; data(instance) in which &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;tasks&lt;/code&gt; field contains?&lt;/p&gt;
 
-&lt;p&gt;The following example demonstrates the calculating offset of any field relative to its structure.&lt;/p&gt;
+&lt;p&gt;which means&lt;/p&gt;
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;base_address of previous (type_t) = address(link.prev) - 8 bytes
+base_address of next (type_t) = address(link.next) - 16 bytes
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The following example demonstrates calculating the byte offset of any field relative to its structure using a macro &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;OFFSET_OF&lt;/code&gt;. This macro accepts two arguments, the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;structure type T&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;field name&lt;/code&gt; belonging the structure.&lt;/p&gt;
 &lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;/// offset.c&lt;/span&gt;
 
 &lt;span class=&quot;cp&quot;&gt;#include &amp;lt;stdio.h&amp;gt;
-#include &amp;lt;stdlib.h&amp;gt;
 &lt;/span&gt;
-&lt;span class=&quot;cp&quot;&gt;#define OFFSET_OF(T, x) (unsigned long long int) ((&amp;amp;(((T*)0) -&amp;gt; x))) //the macro calculate the offset of field x with respect to struct T
+&lt;span class=&quot;c1&quot;&gt;//calculates the byte offset of the field x with respect to its position in the struct T&lt;/span&gt;
+&lt;span class=&quot;cp&quot;&gt;#define OFFSET_OF(T, x) (unsigned long long int) (&amp;amp;(((T*)0) -&amp;gt; x))
 &lt;/span&gt;
 &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;list_head&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;list_head&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prev&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;list_head&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prev&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt; 
+    &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;list_head&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
 
 &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;task_t&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
@@ -213,10 +217,12 @@ Then, how about calculating the memory &lt;code class=&quot;language-plaintext h
 &lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;//address.c&lt;/span&gt;
 
 &lt;span class=&quot;cp&quot;&gt;#include &amp;lt;stdio.h&amp;gt;
-#include &amp;lt;stdlib.h&amp;gt;
+#include &amp;lt;stdint.h&amp;gt;
 &lt;/span&gt;
+
 &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;list_head&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
-    &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;list_head&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prev&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;list_head&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prev&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;list_head&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;*&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 &lt;span class=&quot;p&quot;&gt;};&lt;/span&gt;
 
 &lt;span class=&quot;k&quot;&gt;struct&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;task_t&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
@@ -231,25 +237,40 @@ Then, how about calculating the memory &lt;code class=&quot;language-plaintext h
     &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%lu size prev&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;sizeof&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;t1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tasks&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prev&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
     &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%lu size next&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;sizeof&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;t1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tasks&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;));&lt;/span&gt;
 
-    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%p address of pid&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;t1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%p address of prev&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;t1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tasks&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prev&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//also same as t1.task&lt;/span&gt;
-    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%p address of next&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;t1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tasks&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%lu address of pid&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;uintptr_t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;t1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;pid&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;//also same as t1&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%lu address of prev&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;uintptr_t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;t1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tasks&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;prev&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
+    &lt;span class=&quot;n&quot;&gt;printf&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;%lu address of next&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\n&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;kt&quot;&gt;uintptr_t&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;t1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;tasks&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;);&lt;/span&gt;
 
     &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
 &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 &lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;gcc &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; address address.c
-&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;./address
-  4 size pid
-  8 size prev
-  8 size next
-  140732870370816 address of pid
-  140732870370824 address of prev
-  140732870370832 address of next
-&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;Note: that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;pid&lt;/code&gt; field has the size 4 bytes however the next address start after 8 bytes. It’s because the compiler in this case adds the padding of 4 bytes, so the data can be accessed in less number of instructions(internal memory access optimization).&lt;/p&gt;
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;./address               
+4 size pid
+8 size prev
+8 size next
+140720804185888 address of pid
+140720804185896 address of prev
+140720804185904 address of next
 
-&lt;p&gt;Now let’s, get the handle to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt; data using one macro called &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;container_of&lt;/code&gt; by tracing the base address type &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt;. 
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;Note: that &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;pid&lt;/code&gt; field has the size 4 bytes however the next address start after 8 bytes. It’s because the compiler in this case adds the padding of 4 bytes, so the next data &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;prev&lt;/code&gt; values can be accessed in a single instruction(internal memory access optimization). This data organization in the memory is known &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;byte alignment&lt;/code&gt;. This alignment may vary based on 32 or 64 bit processor architecture.&lt;/p&gt;
+
+&lt;p&gt;Let’s decompose &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;OFFSET_OF&lt;/code&gt; macro and understand how it get the offset(location) of filed with &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;structure&lt;/code&gt;.&lt;/p&gt;
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;#define OFFSET_OF(T, x) (unsigned long long int) ((&amp;amp;(((T*)0) -&amp;gt; x)))
+...
+...
+off_tasks = OFFSET_OF(struct task_t, tasks);
+...
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;Upon pre-processing the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;OFFSET_OF(struct task_t, tasks)&lt;/code&gt; macro, it gets expand into the following form.&lt;/p&gt;
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;off_pid = (unsigned long long int) (&amp;amp;((struct task_t*)0) -&amp;gt; pid);
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;The &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;amp;((struct task_t*)0) -&amp;gt; pid&lt;/code&gt; casts zero value to pointer &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;struct task_t*&lt;/code&gt; and gets the address of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;pid&lt;/code&gt; field. Then cast its address to 8 bytes unsigned data. This is ~ of placing the struct instance at memory zero and then finding the offset of the field from 0th address in terms of the number of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;bytes&lt;/code&gt;.
+In this case compiler don’t dereference the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;pid&lt;/code&gt; field.&lt;/p&gt;
+
+&lt;p&gt;Now the next step is to get the handle to &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt; data using another macro called &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CONTAINER_OF&lt;/code&gt; by tracing the base address type &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;task_t&lt;/code&gt;.
 The following program illustrates how &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CONTAINER_OF&lt;/code&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;OFFSET_OF&lt;/code&gt; macros are used together.&lt;/p&gt;
 
 &lt;div class=&quot;language-c highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;// generic_list_node.c&lt;/span&gt;
@@ -291,7 +312,7 @@ The following program illustrates how &lt;code class=&quot;language-plaintext hi
 &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 &lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;gcc &lt;span class=&quot;nt&quot;&gt;-o&lt;/span&gt; node_access generic_list_node.c
-&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;./node_access              
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;./node_access
   original task address: 0x7ffee7dfc5f0, retrieved task address: 0x7ffee7dfc5f0
   pid 1274
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
@@ -300,7 +321,7 @@ The following program illustrates how &lt;code class=&quot;language-plaintext hi
 
 &lt;h2 id=&quot;putting-this-together&quot;&gt;Putting this together&lt;/h2&gt;
 
-&lt;p&gt;This is how the base of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;circular doubly linked list&lt;/code&gt; is built in the Linux Kernel. Please note that this is still a rudimentary implementation of the Kernel list.
-On can refer the actual implementation of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;container_of&lt;/code&gt; macro &lt;a href=&quot;https://github.com/torvalds/linux/blob/master/include/linux/kernel.h#L692&quot;&gt;kernel.h&lt;/a&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;offsetof&lt;/code&gt; macro &lt;a href=&quot;https://elixir.bootlin.com/linux/latest/source/tools/include/linux/kernel.h#L23&quot;&gt;kernel.h&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;This is how the base of &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;circular doubly linked list&lt;/code&gt; is built in the Linux Kernel. Please note that this is still a rudimentary implementation of the Kernel’s linked list.
+One can refer the actual implementation of the &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;container_of&lt;/code&gt; macro &lt;a href=&quot;https://github.com/torvalds/linux/blob/4b0986a3613c92f4ec1bdc7f60ec66fea135991f/include/linux/container_of.h#L17&quot;&gt;container_of.h&lt;/a&gt; and &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;offsetof&lt;/code&gt; macro &lt;a href=&quot;https://elixir.bootlin.com/linux/latest/source/tools/include/linux/kernel.h#L23&quot;&gt;kernel.h&lt;/a&gt;&lt;/p&gt;
 
-&lt;p&gt;In the next part, let’s use this base then implement basic list routines.&lt;/p&gt;</content><author><name></name></author><category term="linked" /><category term="list," /><category term="Linux," /><category term="Linux" /><category term="kernel" /><category term="list" /><summary type="html">Circular Doubly Linked List &amp;lt;- - -&amp;gt; is one of the most widely used data structure in the Linux system implementation. It holds importance in the scheduling of the processes(RunQueue), the buffers cache, device driver implementation, and so on.</summary></entry></feed>
+&lt;p&gt;In the next part, let’s use this base then implement essential list routines.&lt;/p&gt;</content><author><name></name></author><category term="linked" /><category term="list," /><category term="Linux," /><category term="Linux" /><category term="kernel" /><category term="list" /><summary type="html">Circular Doubly Linked List &amp;lt;- - -&amp;gt; is one of the most widely used data structure in the Linux system implementation. It holds importance in the scheduling of the processes(RunQueue), the buffers cache, device driver implementation, and so on.</summary></entry></feed>
