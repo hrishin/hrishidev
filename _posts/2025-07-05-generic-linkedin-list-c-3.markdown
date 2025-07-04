@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "How Linux Kernel implements generic linked list: part 3"
-date:   2025-07-05 10:12:12 +0000
+date:   2025-07-04 10:12:12 +0000
 categories: linked list, Linux, Linux kernel
 ---
 
