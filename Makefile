@@ -1,12 +1,12 @@
 .PHONY: build run
 
 build:
-	bundle
+	bundle install
 
 run: build
 	bundle exec jekyll serve
 
-deploy: 
+deploy:
 	rm -rf .jekyll-cache
 	bundle
 	
