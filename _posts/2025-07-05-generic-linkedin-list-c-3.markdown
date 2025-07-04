@@ -222,6 +222,17 @@ A process can be:
 - In the runqueue (`run_list`)
 - And more!
 
+
+```ascii
+[struct list_head: tasks] ----                  [struct task_struct: python]         [struct task_struct: app]
+                              |                 +--------------------------+         +----------------------+
+                              |                 | name: "python"           |         | name: "app"          |
+                              |---------------->| tasks.next  ------------>|-------->| tasks.next           |
+                              |<----------------| tasks.prev  <------------|<--------| tasks.prev           |
+[struct list_head: run_list]------------------->| run_list.next ---------->|         |                      |
+                           |<-------------------| run_list.prev <----------|         |                      |
++--------------------------+         +----------------------+
+```
 ---
 
 **Summary:**  
