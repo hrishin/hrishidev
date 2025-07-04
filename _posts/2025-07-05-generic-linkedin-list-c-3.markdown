@@ -6,6 +6,9 @@ categories: linked list, Linux, Linux kernel
 ---
 
 A generic circular doubly linked list is not just a theoretical construct in the Linux kernel—it's a practical workhorse used in many core subsystems. In this final part, we'll see how the routines we implemented earlier are used in real Linux kernel code, focusing on process scheduling and device drivers.
+Most importanly OS kernel as serve many routines, processes and with finite resrouces.
+Thus performance and efficieny is really a
+key matter for throughtput by optimising the common data strucures and routines.
 
 ## Recap
 
