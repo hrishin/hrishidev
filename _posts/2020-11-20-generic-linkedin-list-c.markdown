@@ -165,7 +165,9 @@ Let's break down the `OFFSET_OF` macro:
 #define OFFSET_OF(T, x) (unsigned long long int) ((&(((T*)0) -> x)))
 ...
 ...
+...
 off_tasks = OFFSET_OF(struct task_t, tasks);
+...
 ...
 ```
 
@@ -175,17 +177,20 @@ off_pid = (unsigned long long int) (&((struct task_t*)0) -> pid);
 ```
 
 Step-by-step breakdown of the `OFFSET_OF` macro
-    1. (T)0
-        - This casts the integer `0` to a pointer of type `T*`.
-        - So, it creates a pointer that "pretends" to point to a struct of type `T` at address 0.
-    2. ((T)0) -> x
-        - This accesses the member `x` of the struct pointed to by the pointer.
-        - Since the pointer is at address 0, `((T*)0)->x` is the address of member `x` as if the struct started at address 0.
-    3. &(((T)0) -> x)
-        - This takes the address of the member `x` within the struct.
-        - Since the base address is 0, the address of `x` is actually its offset from the start of the struct.
-    4. (unsigned long long int)
-        - This casts the result to an unsigned long long integer, so you get the offset as a number (in bytes).
+1. (T)0
+    - This casts the integer `0` to a pointer of type `T*`.
+    - So, it creates a pointer that "pretends" to point to a struct of type `T` at address 0.
+
+2. ((T)0) -> x
+    - This accesses the member `x` of the struct pointed to by the pointer.
+    - Since the pointer is at address 0, `((T*)0)->x` is the address of member `x` as if the struct started at address 0.
+
+3. &(((T)0) -> x)
+    - This takes the address of the member `x` within the struct.
+    - Since the base address is 0, the address of `x` is actually its offset from the start of the struct.
+    
+4. (unsigned long long int)
+    - This casts the result to an unsigned long long integer, so you get the offset as a number (in bytes).
 
 Now, to get back from a `list_head` pointer to the parent structure (like `task_t`), we use the `CONTAINER_OF` macro. This is a common C trick to implement generic data structures.
 
