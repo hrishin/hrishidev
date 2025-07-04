@@ -9,9 +9,9 @@ A generic circular doubly linked list is not just a theoretical construct in the
 
 ## Recap
 
-- **Part 1:** We explored the motivation and building blocks of the Linux kernel's generic linked list.
-- **Part 2:** We implemented the essential list routines in C.
-- **Part 3 (this post):** We'll see how these routines are used in real Linux kernel subsystems.
+- [Part 1](./2020-11-20-generic-linkedin-list-c.markdown): We explored the motivation and building blocks of the Linux kernel's generic linked list.
+- [Part 2](./2025-07-04-generic-linkedin-list-c-2.markdown): We implemented the essential list routines in C.
+- Part 3 (this post): We'll see how these routines are used in real Linux kernel subsystems.
 
 ---
 
