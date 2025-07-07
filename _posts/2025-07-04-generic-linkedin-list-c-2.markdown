@@ -148,8 +148,8 @@ static inline int list_empty(const struct list_head *head) {
     for (pos = (head)->next; pos != (head); pos = pos->next)
 
 struct task_t {
-    int pid;
-    struct list_head tasks;
+    int     pid;
+    struct  list_head tasks;
 };
 
 int main() {
@@ -180,7 +180,7 @@ int main() {
         free(task);
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 ```
 

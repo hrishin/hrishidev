@@ -6,9 +6,8 @@ categories: linked list, Linux, Linux kernel
 ---
 
 A generic circular doubly linked list is not just a theoretical construct in the Linux kernel—it's a practical workhorse used in many core subsystems. In this final part, we'll see how the routines we implemented earlier are used in real Linux kernel code, focusing on process scheduling and device drivers.
-Most importanly OS kernel as serve many routines, processes and with finite resrouces.
-Thus performance and efficieny is really a
-key matter for throughtput by optimising the common data strucures and routines.
+Most importantly OS kernel as serve many routines, processes and with finite reroutes.
+Thus performance and efficient is really a key matter for throughput by optimizing the common data structures and routines.
 
 ## Recap
 
@@ -190,8 +189,8 @@ The `list_entry` macro (or `CONTAINER_OF`) tells the kernel which field to use t
 
 #### Why Is This Useful?
 
-- **Performance and Efficiency:** This avoids the need for dynamically allocating wrapper nodes. It's memory efficient, cache friendly, and allows fast constant-time insert/remove operations.vNo extra allocations or indirection—just extra fields in the struct. 
-Moving state of the process/task for involves manipulating the `head_list` pointers of the task, thats it really.
+- **Performance and Efficiency:** This avoids the need for dynamically allocating wrapper nodes. It's memory efficient, cache friendly, and allows fast constant-time insert/remove operations. No extra allocations or indirection—just extra fields in the struct. 
+Moving state of the process/task for scheduling involves manipulating the `head_list` pointers of the task, thats it really.
 
 - **Type safety:** The list routines are type-agnostic but safe, thanks to macros like `CONTAINER_OF`.
 
