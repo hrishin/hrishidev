@@ -11,8 +11,8 @@ Thus performance and efficient is really a key matter for throughput by optimizi
 
 ## Recap
 
-- [Part 1](./2020-11-20-generic-linkedin-list-c.markdown): We explored the motivation and building blocks of the Linux kernel's generic linked list.
-- [Part 2](./2025-07-04-generic-linkedin-list-c-2.markdown): We implemented the essential list routines in C.
+- [Part 1](https://hrishi.dev/linked/list,/linux,/linux/kernel/list/2020/11/20/generic-linkedin-list-c.html): We explored the motivation and building blocks of the Linux kernel's generic linked list.
+- [Part 2](https://hrishi.dev/linked/list,/linux,/linux/kernel/2025/07/04/generic-linkedin-list-c-2.html): We implemented the essential list routines in C.
 - Part 3 (this post): We'll see how these routines are used in real Linux kernel subsystems.
 
 ---
