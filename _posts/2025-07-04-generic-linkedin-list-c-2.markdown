@@ -5,7 +5,7 @@ date:   2025-07-04 10:12:12 +0000
 categories: linked list, Linux, Linux kernel
 ---
 
-In [Part 1](./2020-11-20-generic-linkedin-list-c.markdown), we explored the 
+In [Part 1](https://hrishi.dev/linked/list,/linux,/linux/kernel/list/2020/11/20/generic-linkedin-list-c.html), we explored the 
 motivation and building blocks behind the Linux kernel’s generic circular doubly linked list. 
 Now, let’s implement the core routines that make this data structure so powerful and reusable.
 
