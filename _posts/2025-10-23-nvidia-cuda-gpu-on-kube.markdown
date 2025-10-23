@@ -804,7 +804,7 @@ Lets summerize the GPU Container Enablement Flow
 
 ### Detailed Flow
 
-```mermaid
+```mermaid!
 graph TD
     A[User Submits Pod Request with GPU Resources] --> B[Kubernetes API Server]
     B --> C[Scheduler]
