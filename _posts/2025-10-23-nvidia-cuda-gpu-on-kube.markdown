@@ -5,8 +5,6 @@ date:   2025-10-23 06:10:10 +0000
 categories: CUDA, GPU, NVidia
 ---
 
-# From Silicon to Container: The Complete Journey of GPU Provisioning in Kubernetes
-
 *A deep dive into how Kubernetes makes GPUs accessible to containers, from bare metal to CUDA applications*
 
 ---
