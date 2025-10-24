@@ -236,7 +236,6 @@ The CUDA toolkit in your container must be compatible with the host's driver ver
 
 Here's what happens when you run a basic CUDA program:
 ```c
-// simple_cuda.cu
 #include <cuda_runtime.h>
 #include <stdio.h>
 
@@ -521,7 +520,6 @@ Notice that:
 
 When a CUDA application initializes:
 ```c
-// In your CUDA application
 cudaError_t err = cudaSetDevice(0);
 ```
 
@@ -530,7 +528,6 @@ The CUDA driver:
 2. Creates a virtual-to-physical GPU mapping
 3. Only allows access to visible devices
 ```c
-// Simplified driver logic
 cuInit() {
     visible_devices = getenv("NVIDIA_VISIBLE_DEVICES");
     
@@ -707,7 +704,6 @@ Container starts
 
 Inside the container, our CUDA application executes:
 ```c
-// cuda_malloc_test.c
 #include <cuda_runtime.h>
 #include <stdio.h>
 
