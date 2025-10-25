@@ -27,6 +27,8 @@ In this comprehensive guide, we'll explore every layer of this stack—from PCIe
 8. [The Container Device Interface (CDI) Revolution](#the-container-device-interface-cdi-revolution)
 9. [Conclusion](#conclusion)
 
+Note: Dynamic Resoure Allocation(DRA) is left out of the the scope, we have covered Device Plugin aspects of it.
+
 ---
 
 ## Layer 1: Hardware & Kernel Foundation
