@@ -18,7 +18,7 @@
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
 
-title: tail -f curiosity and experience
+title: tail -f /home/hrishi/curiosity-and-experience
 email: /dev/null
 description: >- # this means to ignore newlines until "baseurl:"
   Containers and Kubernetes/OpenShift, Distributed systems, Unix/Linux systems, Data structures and algorithms and Cloud computing.
