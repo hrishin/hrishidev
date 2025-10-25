@@ -788,6 +788,634 @@ close(3) = 0
 
 ---
 
+## Layer 7: Advanced GPU Sharing
+
+Modern GPU workloads often don't need an entire GPU. Several technologies enable GPU sharing:
+
+### Multi-Instance GPU (MIG)
+
+NVIDIA A100 and H100 GPUs support hardware-level partitioning into Multiple Instances.
+
+#### MIG Architecture
+
+A single A100 GPU can be divided into up to 7 instances:
+```
+Physical A100 (40GB)
+├─ MIG Instance 0: 3g.20gb (3 compute slices, 20GB memory)
+├─ MIG Instance 1: 3g.20gb (3 compute slices, 20GB memory)
+├─ MIG Instance 2: 2g.10gb (2 compute slices, 10GB memory)
+└─ MIG Instance 3: 1g.5gb  (1 compute slice, 5GB memory)
+```
+
+Each MIG instance:
+- Has dedicated compute resources (streaming multiprocessors)
+- Has dedicated memory partition
+- Provides hardware-level isolation
+- Appears as a separate GPU device
+
+#### MIG Device Files
+```bash
+# Enable MIG mode
+$ nvidia-smi -i 0 -mig 1
+
+# Create MIG instances
+$ nvidia-smi mig -cgi 3g.20gb -C
+$ nvidia-smi mig -cgi 3g.20gb -C
+$ nvidia-smi mig -cgi 1g.5gb -C
+
+# New device files appear
+
+$ ls -l /dev/nvidia*
+crw-rw-rw- 1 root root 195,   0 Oct 23 09:00 /dev/nvidia0          # Parent GPU
+crw-rw-rw- 1 root root 195, 255 Oct 23 09:00 /dev/nvidiactl
+crw-rw-rw- 1 root root 509,   0 Oct 23 09:00 /dev/nvidia-uvm
+
+# MIG device files
+crw-rw-rw- 1 root root 195,   1 Oct 23 09:00 /dev/nvidia0mig0      # First 3g.20gb
+crw-rw-rw- 1 root root 195,   2 Oct 23 09:00 /dev/nvidia0mig1      # Second 3g.20gb
+crw-rw-rw- 1 root root 195,   3 Oct 23 09:00 /dev/nvidia0mig2      # 1g.5gb
+```
+
+#### MIG in Kubernetes
+The NVIDIA Device Plugin discovers MIG instances and advertises them as separate resources:
+
+```yaml
+apiVersion: v1
+kind: Node
+status:
+  capacity:
+    nvidia.com/mig-3g.20gb: "2"
+    nvidia.com/mig-1g.5gb: "1"
+  allocatable:
+    nvidia.com/mig-3g.20gb: "2"
+    nvidia.com/mig-1g.5gb: "1"
+```
+
+```yaml
+#Pods can request specific MIG profiles:
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mig-pod
+spec:
+  containers:
+  - name: cuda-app
+    image: nvidia/cuda:11.8.0-base-ubuntu22.04
+    resources:
+      limits:
+        nvidia.com/mig-3g.20gb: 1  # Request one 3g.20gb instance
+```
+
+#### MIG benefits
+- True hardware isolation (unlike time-slicing)
+- Guaranteed memory allocation
+- Fault isolation (one instance failure doesn't affect others)
+- Quality of Service (QoS) guarantees
+
+#### MIG Trade-offs
+- Partiations the GPU in as per device capabilities, less control over GPU partitioning layout
+
+### GPU Time-Slicing
+For workloads that don't require full GPU utilization, time-slicing allows multiple containers to share a single GPU.
+
+#### Device Plugin ConfigMap
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvidia-device-plugin-config
+  namespace: kube-system
+data:
+  config.yaml: |
+    version: v1
+    sharing:
+      timeSlicing:
+        replicas: 4
+        renameByDefault: false
+        failRequestsGreaterThanOne: true
+    resources:
+      - name: nvidia.com/gpu
+        devices: all
+```
+
+With this configuration:
+- Each physical GPU appears as 4 schedulable resources
+- Kubernetes can schedule 4 pods per GPU
+- All pods access the same physical GPU
+
+#### How Time-Slicing Works
+```
+Pod 1 Container
+     ↓
+NVIDIA_VISIBLE_DEVICES=GPU-0
+     ↓
+cudaMalloc() → /dev/nvidia0
+
+Pod 2 Container
+     ↓
+NVIDIA_VISIBLE_DEVICES=GPU-0  # Same GPU!
+     ↓
+cudaMalloc() → /dev/nvidia0
+
+Pod 3 Container
+     ↓
+NVIDIA_VISIBLE_DEVICES=GPU-0  # Same GPU!
+     ↓
+cudaMalloc() → /dev/nvidia0
+```
+
+All containers:
+1. See the same GPU device
+2. Create separate CUDA contexts
+3. GPU hardware time-multiplexes between contexts
+4. No memory isolation (pods can see each other's allocations!)
+
+**Time-slicing characteristics:**
+- **Pros:**
+  - Easy to configure
+  - Works with any GPU
+  - Higher utilization for bursty workloads
+  
+- **Cons:**
+  - No memory isolation (security risk)
+  - No performance guarantees
+  - One container can starve others
+  - OOM on one container affects all
+
+**Best for:**
+- Development/testing environments
+- Interactive workloads (Jupyter notebooks)
+- Bursty inference workloads with low duty cycle
+
+### vGPU (Virtual GPU)
+
+NVIDIA vGPU technology provides software-defined GPU sharing with:
+- Hypervisor-level virtualization
+- Memory isolation between VMs
+- QoS policies and scheduling
+- Live migration support
+```
+Hypervisor (VMware vSphere / KVM)
+├─ VM 1: vGPU (4GB, 1/4 GPU compute)
+├─ VM 2: vGPU (4GB, 1/4 GPU compute)
+├─ VM 3: vGPU (8GB, 1/2 GPU compute)
+└─ Physical GPU (16GB total)
+```
+
+Each vGPU appears as a complete GPU to the guest OS, enabling standard CUDA applications without modification.
+Can use the Kata containers to to enable vGPU on the Kubernetes.
+
+### Comparison Matrix
+
+| Technology | Isolation | Memory | Performance | Flexibility | Use Case |
+|-----------|-----------|---------|-------------|-------------|----------|
+| **Full GPU** | Hardware | Dedicated | 100% | Low | Training, HPC |
+| **MIG** | Hardware | Dedicated | Guaranteed | Medium | Inference, Multi-tenant |
+| **Time-Slicing** | None | Shared | Variable | High | Dev/Test, Jupyter |
+| **vGPU** | Software | Isolated | Good | High | VDI, Cloud VMs |
+
+---
+
+## The Container Device Interface (CDI) Revolution
+
+In 2023-2024, the container ecosystem began transitioning to the **Container Device Interface (CDI)**—a standardized specification that fundamentally changes how devices are exposed to containers.
+
+### The Problem CDI Solves
+
+#### The Old Way: Vendor-Specific Runtime Hooks
+
+Before CDI, each hardware vendor needed custom integration:
+```
+┌─────────────────────────────────────────┐
+│   Container Runtime (containerd)        │
+└─────────────┬───────────────────────────┘
+              │
+              ↓
+┌─────────────────────────────────────────┐
+│   nvidia-container-runtime (wrapper)    │  ← NVIDIA-specific
+└─────────────┬───────────────────────────┘
+              │
+              ↓
+┌─────────────────────────────────────────┐
+│   nvidia-container-runtime-hook         │  ← Vendor logic
+└─────────────┬───────────────────────────┘
+              │
+              ↓
+┌─────────────────────────────────────────┐
+│   nvidia-container-cli                  │  ← Device provisioning
+└─────────────────────────────────────────┘
+```
+
+Problems:
+
+Vendor Lock-in: AMD needed rocm-container-runtime, Intel their own
+Runtime Coupling: Required wrapping or modifying the container runtime
+Complex Integration: Each vendor's device plugin needed runtime-specific knowledge
+No Standardization: Every vendor solved the problem differently
+
+#### The New Way: Declarative Device Specifications
+
+```yaml
+cdiVersion: "0.6.0"
+kind: nvidia.com/gpu
+devices:
+  - name: "0"
+    containerEdits:
+      deviceNodes:
+        - path: /dev/nvidia0
+          type: c
+          major: 195
+          minor: 0
+        - path: /dev/nvidiactl
+          type: c
+          major: 195
+          minor: 255
+        - path: /dev/nvidia-uvm
+          type: c
+          major: 509
+          minor: 0
+      mounts:
+        - hostPath: /usr/lib/x86_64-linux-gnu/libcuda.so.535.104.05
+          containerPath: /usr/lib/x86_64-linux-gnu/libcuda.so.1
+          options: ["ro", "nosuid", "nodev", "bind"]
+        - hostPath: /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.535.104.05
+          containerPath: /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1
+          options: ["ro", "nosuid", "nodev", "bind"]
+        - hostPath: /usr/bin/nvidia-smi
+          containerPath: /usr/bin/nvidia-smi
+          options: ["ro", "nosuid", "nodev", "bind"]
+      env:
+        - "NVIDIA_VISIBLE_DEVICES=0"
+        - "NVIDIA_DRIVER_CAPABILITIES=compute,utility"
+      hooks:
+        - hookName: createContainer
+          path: /usr/bin/nvidia-ctk
+          args: ["hook", "update-ldcache"]
+          
+  - name: "1"
+    containerEdits:
+      deviceNodes:
+        - path: /dev/nvidia1
+          type: c
+          major: 195
+          minor: 1
+        - path: /dev/nvidiactl
+          type: c
+          major: 195
+          minor: 255
+        - path: /dev/nvidia-uvm
+          type: c
+          major: 509
+          minor: 0
+      mounts:
+        # ... same libraries ...
+      env:
+        - "NVIDIA_VISIBLE_DEVICES=1"
+        - "NVIDIA_DRIVER_CAPABILITIES=compute,utility"
+```
+
+### CDI Architecture
+
+```
+┌──────────────────────────────────────────┐
+│   Container Orchestrator                 │
+│   (Kubernetes, Podman, Docker)           │
+└─────────────┬────────────────────────────┘
+              │ Request: "nvidia.com/gpu=0"
+              ↓
+┌──────────────────────────────────────────┐
+│   Container Runtime                      │
+│   (containerd, CRI-O, Docker)            │
+│   + Native CDI Support                   │
+└─────────────┬────────────────────────────┘
+              │ Reads CDI specs from disk
+              ↓
+┌──────────────────────────────────────────┐
+│   CDI Specification Files                │
+│   /etc/cdi/*.yaml                        │
+│   /var/run/cdi/*.json                    │
+└─────────────┬────────────────────────────┘
+              │ Describes device configuration
+              ↓
+┌──────────────────────────────────────────┐
+│   Host System Resources                  │
+│   - Device nodes (/dev/nvidia*)          │
+│   - Libraries (libcuda.so, etc.)         │
+│   - Utilities (nvidia-smi)               │
+└──────────────────────────────────────────┘
+```
+
+CDI provides a vendor-neutral, declarative JSON/YAML specification:
+
+```yaml
+# /etc/cdi/nvidia.yaml
+cdiVersion: "0.6.0"
+kind: nvidia.com/gpu
+devices:
+  - name: "0"
+    containerEdits:
+      deviceNodes:
+        - path: /dev/nvidia0
+          type: c
+          major: 195
+          minor: 0
+        - path: /dev/nvidiactl
+          type: c
+          major: 195
+          minor: 255
+        - path: /dev/nvidia-uvm
+          type: c
+          major: 509
+          minor: 0
+      mounts:
+        - hostPath: /usr/lib/x86_64-linux-gnu/libcuda.so.535.104.05
+          containerPath: /usr/lib/x86_64-linux-gnu/libcuda.so.1
+          options: ["ro", "nosuid", "nodev", "bind"]
+        - hostPath: /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.535.104.05
+          containerPath: /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1
+          options: ["ro", "nosuid", "nodev", "bind"]
+        - hostPath: /usr/bin/nvidia-smi
+          containerPath: /usr/bin/nvidia-smi
+          options: ["ro", "nosuid", "nodev", "bind"]
+      env:
+        - "NVIDIA_VISIBLE_DEVICES=0"
+        - "NVIDIA_DRIVER_CAPABILITIES=compute,utility"
+      hooks:
+        - hookName: createContainer
+          path: /usr/bin/nvidia-ctk
+          args: ["hook", "update-ldcache"]
+          
+  - name: "1"
+    containerEdits:
+      deviceNodes:
+        - path: /dev/nvidia1
+          type: c
+          major: 195
+          minor: 1
+        - path: /dev/nvidiactl
+          type: c
+          major: 195
+          minor: 255
+        - path: /dev/nvidia-uvm
+          type: c
+          major: 509
+          minor: 0
+      mounts:
+        # ... same libraries ...
+      env:
+        - "NVIDIA_VISIBLE_DEVICES=1"
+        - "NVIDIA_DRIVER_CAPABILITIES=compute,utility"
+```
+
+### CDI Architecture
+```
+┌──────────────────────────────────────────┐
+│   Container Orchestrator                 │
+│   (Kubernetes, Podman, Docker)           │
+└─────────────┬────────────────────────────┘
+              │ Request: "nvidia.com/gpu=0"
+              ↓
+┌──────────────────────────────────────────┐
+│   Container Runtime                      │
+│   (containerd, CRI-O, Docker)            │
+│   + Native CDI Support                   │
+└─────────────┬────────────────────────────┘
+              │ Reads CDI specs from disk
+              ↓
+┌──────────────────────────────────────────┐
+│   CDI Specification Files                │
+│   /etc/cdi/*.yaml                        │
+│   /var/run/cdi/*.json                    │
+└─────────────┬────────────────────────────┘
+              │ Describes device configuration
+              ↓
+┌──────────────────────────────────────────┐
+│   Host System Resources                  │
+│   - Device nodes (/dev/nvidia*)          │
+│   - Libraries (libcuda.so, etc.)         │
+│   - Utilities (nvidia-smi)               │
+└──────────────────────────────────────────┘
+```
+
+CDI Specification Structure
+A CDI spec file contains three main sections:
+1. Metadata
+
+```yaml
+cdiVersion: "0.6.0"          # CDI specification version
+kind: nvidia.com/gpu          # Fully-qualified device kind
+                              # Format: vendor.com/device-type
+```
+
+The `kind` follows a domain name pattern to prevent collisions:
+
+- `nvidia.com/gpu`
+- `amd.com/gpu`
+- `intel.com/gpu`
+- `xilinx.com/fpga`
+
+2. Device Definitions
+3. Container Edits
+
+### CDI vs Traditional Flow Comparison
+
+#### Traditional NVIDIA Container Toolkit Flow
+
+```
+1. User runs container:
+   docker run --gpus all nvidia/cuda
+         ↓
+2. Docker daemon calls nvidia-container-runtime
+         ↓
+3. nvidia-container-runtime wraps runc
+         ↓
+4. Prestart hook executes: nvidia-container-runtime-hook
+         ↓
+5. Hook reads --gpus flag and NVIDIA_VISIBLE_DEVICES
+         ↓
+6. nvidia-container-cli dynamically queries nvidia-smi
+         ↓
+7. Determines required devices, libraries, mounts
+         ↓
+8. Modifies OCI spec on-the-fly (adds devices, mounts, env)
+         ↓
+9. runc creates container with GPU access
+```
+
+**Characteristics:**
+- Dynamic device discovery at container start
+- Runtime wrapper required
+- Vendor-specific magic in environment variables
+- Black box: hard to inspect what's being configured
+
+#### CDI-Based Flow
+
+```
+1. One-time setup (on node):
+   nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+         ↓
+2. User runs container:
+   docker run --device nvidia.com/gpu=0 nvidia/cuda
+         ↓
+3. containerd (with native CDI support) receives request
+         ↓
+4. Parses CDI device name: "nvidia.com/gpu=0"
+         ↓
+5. Looks up device in /etc/cdi/nvidia.yaml
+         ↓
+6. Reads containerEdits for device "0"
+         ↓
+7. Applies edits to OCI spec:
+   - Adds device nodes
+   - Adds mounts
+   - Sets environment variables
+   - Registers hooks
+         ↓
+8. runc creates container with GPU access
+```
+
+**Characteristics:**
+
+- Static device specification (generated once)
+- No runtime wrapper needed
+- Standard OCI runtime (runc) works unmodified
+- Transparent: inspect CDI specs to see exact configuration
+- Vendor provides only CDI spec generator
+
+### CDI in Kubernetes
+Device Plugin is responsible to adher CDI
+
+#### Pre-CDI Device Plugin
+```go
+func (m *NvidiaDevicePlugin) Allocate(
+    req *pluginapi.AllocateRequest,
+) (*pluginapi.AllocateResponse, error) {
+    responses := pluginapi.AllocateResponse{}
+    
+    for _, request := range req.ContainerRequests {
+        // Device plugin must know HOW to provision GPU
+        response := pluginapi.ContainerAllocateResponse{
+            Envs: map[string]string{
+                "NVIDIA_VISIBLE_DEVICES": "GPU-uuid-1234",
+            },
+            Mounts: []*pluginapi.Mount{
+                {
+                    HostPath: "/usr/lib/x86_64-linux-gnu/libcuda.so",
+                    ContainerPath: "/usr/lib/x86_64-linux-gnu/libcuda.so",
+                    ReadOnly: true,
+                },
+                // ... many more mounts ...
+            },
+            Devices: []*pluginapi.DeviceSpec{
+                {
+                    HostPath: "/dev/nvidia0",
+                    ContainerPath: "/dev/nvidia0",
+                    Permissions: "rwm",
+                },
+                {
+                    HostPath: "/dev/nvidiactl",
+                    ContainerPath: "/dev/nvidiactl",
+                    Permissions: "rwm",
+                },
+                // ... more devices ...
+            },
+        }
+        responses.ContainerResponses = append(
+            responses.ContainerResponses, 
+            &response,
+        )
+    }
+    
+    return &responses, nil
+}
+```
+
+#### Post-CDI Device Plugin
+```go
+func (m *NvidiaDevicePlugin) Allocate(
+    req *pluginapi.AllocateRequest,
+) (*pluginapi.AllocateResponse, error) {
+    responses := pluginapi.AllocateResponse{}
+    
+    for _, request := range req.ContainerRequests {
+        // Device plugin just returns CDI device names!
+        var cdiDevices []string
+        for _, deviceID := range request.DevicesIDs {
+            cdiDevices = append(
+                cdiDevices,
+                fmt.Sprintf("nvidia.com/gpu=%s", deviceID),
+            )
+        }
+        
+        response := pluginapi.ContainerAllocateResponse{
+            CDIDevices: cdiDevices,  // That's it!
+        }
+        responses.ContainerResponses = append(
+            responses.ContainerResponses,
+            &response,
+        )
+    }
+    
+    return &responses, nil
+}
+```
+
+**Key simplification:** The device plugin no longer needs vendor-specific knowledge about mounts, device nodes, or environment variables. It simply returns CDI device identifiers.
+
+#### Container Runtime Integration
+
+When kubelet creates a container with CDI devices:
+
+```
+kubelet receives CDI device names from device plugin:
+  ["nvidia.com/gpu=0", "nvidia.com/gpu=1"]
+         ↓
+kubelet adds CDI annotation to container config:
+  annotations: {
+    "cdi.k8s.io/devices": "nvidia.com/gpu=0,nvidia.com/gpu=1"
+  }
+         ↓
+kubelet → containerd CRI: CreateContainer
+         ↓
+containerd reads CDI annotation
+         ↓
+containerd loads CDI registry from /etc/cdi/*.yaml
+         ↓
+For each CDI device:
+  registry.GetDevice("nvidia.com/gpu=0")
+  registry.GetDevice("nvidia.com/gpu=1")
+         ↓
+Applies container edits to OCI spec:
+  - Merges all device nodes
+  - Merges all mounts
+  - Merges all environment variables
+  - Collects all hooks
+         ↓
+Creates final OCI spec and calls runc
+```
+#### Generating CDI Specifications
+**NVIDIA Container Toolkit**
+
+```bash
+# Basic generation
+nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+
+# With custom options
+nvidia-ctk cdi generate \
+  --output=/etc/cdi/nvidia.yaml \
+  --format=yaml \
+  --device-name-strategy=index \
+  --driver-root=/ \
+  --nvidia-ctk-path=/usr/bin/nvidia-ctk \
+  --ldcache-path=/etc/ld.so.cache
+```
+**AMD ROCm**
+```bash
+rocm-smi --showdriverversion
+rocm-cdi-generator --output=/etc/cdi/amd.yaml
+```
+
 ## Conclusion
 
 Lets summerize the GPU Container Enablement Flow
