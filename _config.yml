@@ -19,7 +19,7 @@
 # in the templates via {{ site.myvariable }}.
 
 title: tail -f /home/hrishi/curiosity-and-experience
-email: /dev/null
+email: hello@hrishi.dev
 description: >- # this means to ignore newlines until "baseurl:"
   Containers and Kubernetes/OpenShift, Distributed systems, Unix/Linux systems, Data structures and algorithms and Cloud computing.
 baseurl: "" # the subpath of your site, e.g. /blog

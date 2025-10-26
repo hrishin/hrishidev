@@ -2,7 +2,7 @@
 layout: post
 title:  "From Silicon to Container: The Complete Journey of GPU Provisioning in Kubernetes"
 date:   2025-10-23 06:10:10 +0000
-categories: CUDA, GPU, NVidia
+categories: [CUDA, GPU, NVidia]
 ---
 
 *A deep dive into how Kubernetes makes GPUs accessible to containers, from bare metal to CUDA applications*
@@ -1200,7 +1200,10 @@ devices:
 
 CDI Specification Structure
 A CDI spec file contains three main sections:
-1. Metadata
+
+1. Device Definitions
+2. Container Edits
+3. Metadata
 
 ```yaml
 cdiVersion: "0.6.0"          # CDI specification version
@@ -1215,8 +1218,6 @@ The `kind` follows a domain name pattern to prevent collisions:
 - `intel.com/gpu`
 - `xilinx.com/fpga`
 
-2. Device Definitions
-3. Container Edits
 
 ### CDI vs Traditional Flow Comparison
 
