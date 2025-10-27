@@ -966,7 +966,7 @@ Hypervisor (VMware vSphere / KVM)
 ```
 
 Each vGPU appears as a complete GPU to the guest OS, enabling standard CUDA applications without modification.
-Can use the Kata containers to to enable vGPU on the Kubernetes.
+Can use the Kata containers to enable vGPU on the Kubernetes.
 
 `Note: In order to use vGPU, vGPU requires NVIDIA vGPU license`
 
