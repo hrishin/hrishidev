@@ -3,6 +3,8 @@ layout: post
 title:  "From Silicon to Container: The Complete Journey of GPU Provisioning in Kubernetes"
 date:   2025-10-23 06:10:10 +0000
 categories: [CUDA, GPU, NVidia]
+redirect_from:
+  - /cuda,/gpu,/nvidia/2025/10/23/nvidia-cuda-gpu-on-kube.html
 ---
 
 *A deep dive into how Kubernetes makes GPUs accessible to containers, from bare metal to CUDA applications*
@@ -965,6 +967,8 @@ Hypervisor (VMware vSphere / KVM)
 
 Each vGPU appears as a complete GPU to the guest OS, enabling standard CUDA applications without modification.
 Can use the Kata containers to to enable vGPU on the Kubernetes.
+
+`Note: In order to use vGPU, vGPU requires NVIDIA vGPU license`
 
 ### Comparison Matrix
 
