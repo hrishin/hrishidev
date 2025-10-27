@@ -16,7 +16,8 @@ gem "minima", "~> 2.5"
 # If you have any plugins, put them here!
 group :jekyll_plugins do
   gem "jekyll-feed", "~> 0.12"
-  gem "jekyll-spaceship"  
+  gem "jekyll-spaceship"
+  gem "jekyll-redirect-from", "~> 0.16"
 end
 
 # Webrick is required for Jekyll 4.1.1+ to serve locally
