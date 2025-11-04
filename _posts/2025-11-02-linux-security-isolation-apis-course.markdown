@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Linux Security and Isolation APIs: course experience"
-date:   2025-12-15 10:00:00 +0000
+date:   2025-11-02 10:00:00 +0000
 categories: [Linux, Security, Kernel, Isolation, APIs]
 ---
 
