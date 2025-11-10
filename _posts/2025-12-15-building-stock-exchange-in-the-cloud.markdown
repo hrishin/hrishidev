@@ -135,7 +135,7 @@ the kernel bypass tequniques.
 - **EC2 with an autoscaler**: Offers the most performance-efficient option for latency-critical workloads.
 - **Containers (ECS/Kubernetes)**: Containers provide a ubiquitous packaging format, and tools like ECS or Kubernetes supply turnkey ecosystems to deploy, scale, and operate applications.
 
-> Given these trade-offs, running critical workloads such as the matching engine or order management system on EC2 remains the pragmatic choice. Could ECS or Kubernetes work? Possibly, but performance constraints make them a secondary option today. That said, the Kubernetes ecosystem continues to address low-latency challenges. For example, recent Cilium (Kubernetes networking) benchmarks with the Netkit data plane show latency approaching bare-metal levels, and in some cases outperforming traditional east-west networking flows(such as for the RAFT cluster use case).
+> Given these trade-offs, running critical workloads such as the matching engine or order management system on EC2 remains the pragmatic choice. Could ECS or Kubernetes work? Possibly, but performance constraints make them a secondary option today. That said, the Kubernetes ecosystem continues to address low-latency challenges. For example, recent Cilium (Kubernetes networking) benchmarks with the Netkit data plane show latency approaching bare-metal levels, and in some cases outperforming traditional east-west networking flows(such as for the RAFT cluster use case)[10].
 
 ### Coinbase International Exchange Architecture (Reference)
 
@@ -258,6 +258,7 @@ business needs on day to day basis.
 The key insight from Coinbase's experience is that **ultra-low latency and cloud-native design are not mutually exclusive**. By carefully selecting instance types, using cluster placement groups, and optimizing network architecture, exchanges can achieve sub-millisecond latencies while maintaining the operational benefits of cloud infrastructure.
 
 The next part of series would focus on Market data and reporting sections.
+
 ---
 
 ## References
@@ -271,6 +272,7 @@ The next part of series would focus on Market data and reporting sections.
 - [7][Aeron Consensus Module](https://theaeronfiles.com/aeron-cluster/consensus-module/)
 - [8][System deign interview - Alex Xu and Sahn Lam]()
 - [9][Proof Reading - Prerak Sanghvi](https://medium.com/prooftrading)
+- [10][Ciliums netkit](https://isovalent.com/blog/post/cilium-netkit-a-new-container-networking-paradigm-for-the-ai-era/)
 
 ---
 
