@@ -5,7 +5,7 @@ date:   2025-11-09 10:00:00 +0000
 categories: [Cloud, AWS, Trading, Low-Latency, Distributed Systems]
 ---
 
-*Exploring how modern exchanges achieve ultra-low latency in the cloud, drawing insights from various exchanges design referrences*
+*Exploring how modern exchanges achieve low latency in the cloud, drawing insights from various exchanges design referrences*
 
 ---
 
@@ -218,7 +218,7 @@ This part of design dont highlight any important services from AWS, however some
 this service is tested well the AWS envrionment and some statistics are available[1]
 
 Lets understand the in the microdetails, how the Order Management System(OMS) and Matching Engine
-designed to not only achive the ultra low latency but alos realibility with the auto failover
+designed to not only achive the ultra-low latency but alos realibility with the auto failover
 in few microseconds wihtout any data loss.
 
 ### Sysem design for the RAFT cluster 
@@ -246,16 +246,18 @@ So an Aeron[2]-like system plays a crucial role, not only providing IPC for the 
 
 ## Conclusion
 
-Building a stock exchange in the cloud is not only possible but can provide advantages over traditional on-premises architectures:
+Building a stock exchange in the cloud is not only possible but can provide own trade-off over traditional on-premises architectures:
 
 1. **Lower operational overhead**: Managed services for non-critical paths
 2. **Better agility**: Fast environment provisioning and safe deployment strategies
 3. **Improved reliability**: Cloud-native patterns for resilience and disaster recovery
 4. **Cost efficiency**: Pay only for what you use, scale on demand
+5. **Go to the market and CapEx**: Agility and self service provisioning at certain scale is the big win when its comes for goto the market. Dont need to spend upfront when its not very clear what kind of systems
+business needs on day to day basis.
 
 The key insight from Coinbase's experience is that **ultra-low latency and cloud-native design are not mutually exclusive**. By carefully selecting instance types, using cluster placement groups, and optimizing network architecture, exchanges can achieve sub-millisecond latencies while maintaining the operational benefits of cloud infrastructure.
 
-The next part of series would focus on Market data and reporting sections
+The next part of series would focus on Market data and reporting sections.
 ---
 
 ## References
