@@ -40,7 +40,7 @@ Exchanges must handle both steady-state and spiking workloads. Coinbase's system
 ## High level system design
 
 
-![Exchange System Design](/assets/exchange-system-design-plaement-group%20(1).png)
+![Exchange System Design](/assets/exchange-system-design.png)
 
 ### Market Participants
 External clients interacting with the exchange:
