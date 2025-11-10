@@ -137,6 +137,35 @@ the kernel bypass tequniques.
 
 > Given these trade-offs, running critical workloads such as the matching engine or order management system on EC2 remains the pragmatic choice. Could ECS or Kubernetes work? Possibly, but performance constraints make them a secondary option today. That said, the Kubernetes ecosystem continues to address low-latency challenges. For example, recent Cilium (Kubernetes networking) benchmarks with the Netkit data plane show latency approaching bare-metal levels, and in some cases outperforming traditional east-west networking flows(such as for the RAFT cluster use case)[10].
 
+## Service over the RAFT - Latency and Resiliency
+
+This part of design dont highlight any important services from AWS, however some aspects
+this service is tested well the AWS envrionment and some statistics are available[6]
+
+Lets understand the in the microdetails, how the Order Management System(OMS) and Matching Engine
+designed to not only achive the ultra-low latency but alos realibility with the auto failover
+in few microseconds wihtout any data loss.
+
+### Sysem design for the RAFT cluster 
+![Exchange System Design RAFT cluster](/assets/exchange-system-design-raft.png)
+
+
+- Built the hot path around a single-threaded, event-loop style core so every order executes deterministically without locks or context switches; sequencing is preserved by feeding work through in-order queues such that the leader’s log index is the single source of truth.
+
+- Co-located matching, OMS, and gateways inside an EC2 cluster placement group to shorten wire distance; pair this with dedicated tenancy, core pinning, and CPU C-state tuning so microbursts don’t suffer noisy-neighbor jitter.
+
+- Memory-map (mmap) the limit-order-book state, replay logs, and hot data blobs into userspace to bypass kernel copies; couple it with page pre-touching and huge pages so the matching thread always hits RAM and never stalls on page faults.
+
+- Replication pipeline uses Raft: leader appends each order to its WAL/log position, broadcasts append entries, waits for majority acks, then releases the decision to the matching loop; followers apply entries strictly in log order to maintain identical sequencing.
+
+- Leader election still follows Raft timing—followers monitor the leader heartbeat, start an election on timeout, gather a majority (using the highest replicated index as voting currency), and the new leader resumes sequencing from the last committed index so no order replays out of order.
+
+So an Aeron[2]-like system plays a crucial role, not only providing IPC for the event bus, but also offering highly available leader election primitives when clustered over Raft.
+- Aeron provides IPC via shared memory, event sequencing, and replication of messages across other hosts.
+- Aeron also supplies leader election primitives to achieve failover within a few microseconds without data loss[7].
+- In the AWS context, Aeron Premium can deliver kernel bypass capabilities to achieve ultra-low latency[6].
+
+
 ### Coinbase International Exchange Architecture (Reference)
 
 Coinbase's architecture provides a blueprint for building cloud-native exchanges:
@@ -211,38 +240,6 @@ Coinbase identified several areas for future optimization:
 - **Kernel bypass**: Reduce kernel overhead for network operations
 - **Elastic Network Adapter (ENA) Express**: Enhanced networking features
 - **Elastic Fabric Adapter (EFA)**: For HPC-style workloads
-
-## Service over the RAFT - Latency and Resiliency
-
-This part of design dont highlight any important services from AWS, however some aspects
-this service is tested well the AWS envrionment and some statistics are available[1]
-
-Lets understand the in the microdetails, how the Order Management System(OMS) and Matching Engine
-designed to not only achive the ultra-low latency but alos realibility with the auto failover
-in few microseconds wihtout any data loss.
-
-### Sysem design for the RAFT cluster 
-![Exchange System Design RAFT cluster](/assets/exchange-system-design-raft.png)
-
-
-- Built the hot path around a single-threaded, event-loop style core so every order executes deterministically without locks or context switches; sequencing is preserved by feeding work through in-order queues such that the leader’s log index is the single source of truth.
-
-- Co-located matching, OMS, and gateways inside an EC2 cluster placement group to shorten wire distance; pair this with dedicated tenancy, core pinning, and CPU C-state tuning so microbursts don’t suffer noisy-neighbor jitter.
-
-- Memory-map (mmap) the limit-order-book state, replay logs, and hot data blobs into userspace to bypass kernel copies; couple it with page pre-touching and huge pages so the matching thread always hits RAM and never stalls on page faults.
-
-- Replication pipeline uses Raft: leader appends each order to its WAL/log position, broadcasts append entries, waits for majority acks, then releases the decision to the matching loop; followers apply entries strictly in log order to maintain identical sequencing.
-
-- Leader election still follows Raft timing—followers monitor the leader heartbeat, start an election on timeout, gather a majority (using the highest replicated index as voting currency), and the new leader resumes sequencing from the last committed index so no order replays out of order.
-
-So an Aeron[2]-like system plays a crucial role, not only providing IPC for the event bus, but also offering highly available leader election primitives when clustered over Raft.
-- Aeron provides IPC via shared memory, event sequencing, and replication of messages across other hosts.
-- Aeron also supplies leader election primitives to achieve failover within a few microseconds without data loss[7].
-- In the AWS context, Aeron Premium can deliver kernel bypass capabilities to achieve ultra-low latency[6].
-
-## Market Data Publisher
-
-
 
 ## Conclusion
 
