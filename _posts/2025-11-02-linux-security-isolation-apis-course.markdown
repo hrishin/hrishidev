@@ -13,7 +13,7 @@ categories: [Linux, Security, Kernel, Isolation, APIs]
 
 Recently, I had the opportunity to attend the **Linux Security and Isolation APIs** course offered by [man7.org Training](https://man7.org/training/secisol/index.html), delivered by Michael Kerrisk, author of *The Linux Programming Interface*. This four-day deep dive into the low-level Linux features that power containers, virtualization, and sandboxing was an eye-opening experience that connected the dots between historical computing concepts and modern cloud infrastructure.
 
-What became particularly fascinating as we explored namespaces, cgroups, seccomp, and SELinux is how all these capabilities trace their roots back to fundamental concepts in time-sharing systems and isolation in the context of security. Modern containerization and virtualization are, in many ways, side effects or biproducts of solving these deeper security and resource isolation challenges.
+What became particularly fascinating as we explored namespaces, cgroups, seccomp, and SELinux is how all these capabilities trace their roots back to fundamental concepts in time-sharing systems and isolation in the context of security. Modern containerization and virtualization are, in many ways, side effects or by-product of solving these deeper security and resource isolation challenges.
 
 ## The Historical Context: From Time-Sharing to Containers
 
@@ -50,7 +50,7 @@ Playing around with system calls like `getresuid()`, `getresgid()`, `setcap()`, 
 
 ## Personal Reflection
 
-Though my journey started with tools such as Docker, Podman, etc., for isolating processes, it's been an enlightening yet humbling experience to see how the evolution of isolation and security needs of multi-user time-sharing capabilities in Linux and Unix systems over more than a decade made virtualization a biproduct of a well designed system.
+Though my journey started with tools such as Docker, Podman, etc., for isolating processes, it's been an enlightening yet humbling experience to see how the evolution of isolation and security needs of multi-user time-sharing capabilities in Linux and Unix systems over more than a decade made virtualization a by-product of a well designed system.
 
 At last, personally I really enjoyed getting hands-on with the cgroup v2 API, exploring the various controllers including CPU, CPUSETS, freezer, and memory manager. Getting quite an in-depth understanding of the freezer controller for migrating workloads was particularly fascinating—understanding how processes can be frozen, migrated between systems, and then resumed opens up powerful possibilities for live migration and workload mobility that are fundamental to modern container orchestration systems.
 
