@@ -130,7 +130,8 @@ For ultra-low latency, you need to minimize network hops:
 - **Elastic Network Adapter (ENA) Express**: Enhanced networking with lower latency and higher throughput. Amazon linux comes with the right ENA driver, however other distros need to make sure about ENA drivers are installed[3].
 - **Elastic Fabric Adapter(EFA)**: EFA could be used to reduce the latency by few more microseconds with 
 the kernel bypass tequniques.
-Note: Kernel-bypass approaches such as DPDK introduce trade-offs—they make debugging network operations difficult because traditional tools or instrumentation/metrics won't work in such setups.
+
+Note: Kernel bypass approaches such as DPDK introduce trade-offs—they make debugging network operations difficult because traditional tools or instrumentation/metrics won't work in such setups.
 
 ### Compute Cluster for Applications
 - **EC2 with an autoscaler**: Offers the most performance-efficient option for latency-critical workloads.
@@ -161,7 +162,7 @@ in few microseconds wihtout any data loss.
 
 - Leader election still follows Raft timing—followers monitor the leader heartbeat, start an election on timeout, gather a majority (using the highest replicated index as voting currency), and the new leader resumes sequencing from the last committed index so no order replays out of order.
 
-So an Aeron[2] like system plays a crucial role, not only providing IPC event bus macked by memory for OMS and Matching engine, but also offering highly available leader election primitives when clustered over Raft.
+So an Aeron[2] like system plays a crucial role, not only providing IPC event bus backed by memory for OMS and Matching engine, but also offering highly available leader election primitives when clustered over Raft.
 - Aeron provides IPC via shared memory, event sequencing, and replication of messages across other hosts.
 - Aeron also supplies leader election primitives to achieve failover within a few microseconds without data loss[7].
 - In the AWS context, Aeron Premium can deliver kernel bypass capabilities to achieve ultra-low latency[6] using the EFA or even over the RDMA channel.
@@ -250,8 +251,7 @@ Building a stock exchange in the cloud is not only possible but can provide own 
 2. **Better agility**: Fast environment provisioning and safe deployment strategies
 3. **Improved reliability**: Cloud-native patterns for resilience and disaster recovery
 4. **Cost efficiency**: Pay only for what you use, scale on demand
-5. **Go to the market and CapEx**: Agility and self service provisioning at certain scale is the big win when its comes for goto the market. Dont need to spend upfront when its not very clear what kind of systems
-business needs on day to day basis.
+5. **Go to the market and CapEx**: Agility and self service provisioning at certain scale is the big win when its comes for goto the market. Business can avoid upfront spending when daily operational requiremetns and infrastructure footprintare still uncertain.
 
 The key insight from Coinbase's experience is that **ultra-low latency and cloud-native design are not mutually exclusive**. By carefully selecting instance types, using cluster placement groups, and optimizing network architecture, exchanges can achieve sub-millisecond latencies while maintaining the operational benefits of cloud infrastructure.
 
@@ -271,8 +271,4 @@ The next part of series would focus on Market data and reporting sections.
 - [8][System deign interview - Alex Xu and Sahn Lam]()
 - [9][Proof Reading - Prerak Sanghvi](https://medium.com/prooftrading)
 - [10][Ciliums netkit](https://isovalent.com/blog/post/cilium-netkit-a-new-container-networking-paradigm-for-the-ai-era/)
-
----
-
-*This post reflects insights from the Coinbase AWS presentation and general principles of building low-latency trading systems. For specific implementation details, refer to the original presentation and AWS documentation.*
 
