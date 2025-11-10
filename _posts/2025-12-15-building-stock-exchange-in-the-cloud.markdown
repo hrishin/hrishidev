@@ -130,12 +130,13 @@ For ultra-low latency, you need to minimize network hops:
 - **Elastic Network Adapter (ENA) Express**: Enhanced networking with lower latency and higher throughput. Amazon linux comes with the right ENA driver, however other distros need to make sure about ENA drivers are installed[3].
 - **Elastic Fabric Adapter(EFA)**: EFA could be used to reduce the latency by few more microseconds with 
 the kernel bypass tequniques.
+Note: Kernel-bypass approaches such as DPDK introduce trade-offs—they make debugging network operations difficult because traditional tools or instrumentation/metrics won't work in such setups.
 
 ### Compute Cluster for Applications
 - **EC2 with an autoscaler**: Offers the most performance-efficient option for latency-critical workloads.
 - **Containers (ECS/Kubernetes)**: Containers provide a ubiquitous packaging format, and tools like ECS or Kubernetes supply turnkey ecosystems to deploy, scale, and operate applications.
 
-> Given these trade-offs, running critical workloads such as the matching engine or order management system on EC2 remains the pragmatic choice. Could ECS or Kubernetes work? Possibly, but performance constraints make them a secondary option today. That said, the Kubernetes ecosystem continues to address low-latency challenges. For example, recent Cilium (Kubernetes networking) benchmarks with the Netkit data plane show latency approaching bare-metal levels, and in some cases outperforming traditional east-west networking flows(such as for the RAFT cluster use case)[10].
+> Given these trade-offs, running critical workloads such as the matching engine or order management system on EC2 remains the pragmatic choice. Could ECS or Kubernetes work? Possibly, but performance constraints make them a secondary option today. That said, the Kubernetes ecosystem continues to address low-latency challenges. For example, recent Cilium (Kubernetes networking) benchmarks with the Netkit data plane show latency approaching non-container level as running the application on the host, and in some cases outperforming traditional east-west networking flows(such as for the RAFT cluster use case)[10].
 
 ## Service over the RAFT - Latency and Resiliency
 
@@ -160,10 +161,10 @@ in few microseconds wihtout any data loss.
 
 - Leader election still follows Raft timing—followers monitor the leader heartbeat, start an election on timeout, gather a majority (using the highest replicated index as voting currency), and the new leader resumes sequencing from the last committed index so no order replays out of order.
 
-So an Aeron[2]-like system plays a crucial role, not only providing IPC for the event bus, but also offering highly available leader election primitives when clustered over Raft.
+So an Aeron[2] like system plays a crucial role, not only providing IPC event bus macked by memory for OMS and Matching engine, but also offering highly available leader election primitives when clustered over Raft.
 - Aeron provides IPC via shared memory, event sequencing, and replication of messages across other hosts.
 - Aeron also supplies leader election primitives to achieve failover within a few microseconds without data loss[7].
-- In the AWS context, Aeron Premium can deliver kernel bypass capabilities to achieve ultra-low latency[6].
+- In the AWS context, Aeron Premium can deliver kernel bypass capabilities to achieve ultra-low latency[6] using the EFA or even over the RDMA channel.
 
 
 ### Coinbase International Exchange Architecture (Reference)
