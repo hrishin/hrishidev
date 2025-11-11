@@ -270,6 +270,6 @@ The next part of series would focus on Market data and reporting sections.
 - [6][Aeron performance enables capital markets to move to the cloud on AWS](https://aws.amazon.com/blogs/industries/aeron-performance-enables-capital-markets-to-move-to-the-cloud-on-aws/)
 - [7][Aeron Consensus Module](https://theaeronfiles.com/aeron-cluster/consensus-module/)
 - [8][System deign interview - Alex Xu and Sahn Lam]()
-- [9][Proof Reading - Prerak Sanghvi](https://medium.com/prooftrading)
+- [9][ProofTrading - Prerak Sanghvi](https://medium.com/prooftrading)
 - [10][Ciliums netkit](https://isovalent.com/blog/post/cilium-netkit-a-new-container-networking-paradigm-for-the-ai-era/)
 
