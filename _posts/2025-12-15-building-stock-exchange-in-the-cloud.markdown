@@ -48,10 +48,6 @@ External clients interacting with the exchange:
 - Market Makers / Hedge Funds
 - Institutional Banks
 
-### Market Data Gateway
-- Receives market data updates from internal systems.
-- Distributes order books, charts, and instrument data to external participants.
-- Handles less latency-sensitive but fairness-critical data dissemination.
 
 ### Order Gateway
 - Entry point for all incoming client orders.
@@ -68,6 +64,11 @@ External clients interacting with the exchange:
 - Central component maintaining the limit order book.
 - Matches buy and sell orders using price-time priority.
 - Handles the most latency-critical processing in the exchange.
+
+### Market Data Gateway
+- Receives market data updates from internal systems.
+- Distributes order books, charts, and instrument data to external participants.
+- Handles fairness-critical data dissemination for all consumers.
 
 ### Market Data (MD) Publisher
 - Produces real-time market data from the matching engine.
