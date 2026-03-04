@@ -13,9 +13,13 @@ redirect_from:
 
 ## Introduction
 
-When you request a GPU in a Kubernetes pod with a simple `nvidia.com/gpu: 1` resource limit, an intricate dance of kernel drivers, container runtimes, device plugins, and orchestration layers springs into action. This journey from physical hardware to a running CUDA application involves multiple abstraction layers working in concert.
+When a application container request a GPU resource in a Kubernetes with a simple `nvidia.com/gpu: 1` resource request/limit, 
+an intricate dance of kernel drivers, container runtimes, device plugins, and orchestration layers springs into action. 
+This journey from physical hardware to a running CUDA application involves multiple abstraction layers working in concert.
 
-In this comprehensive guide, we'll explore every layer of this stack—from PCIe device files to the emerging Container Device Interface (CDI) standard—revealing the elegant complexity that makes GPU-accelerated containerized workloads possible.
+In this comprehensive guide, we'll explore every layer of this stack—from PCIe device files to the emerging 
+Container Device Interface (CDI) standard—revealing the elegant complexity that makes GPU-accelerated 
+containerized workloads possible.
 
 ## Table of Contents
 
@@ -29,7 +33,7 @@ In this comprehensive guide, we'll explore every layer of this stack—from PCIe
 8. [The Container Device Interface (CDI) Revolution](#the-container-device-interface-cdi-revolution)
 9. [Conclusion](#conclusion)
 
-Note: Dynamic Resoure Allocation(DRA) is left out of the the scope, we have covered Device Plugin aspects of it.
+Note: Dynamic Resource Allocation(DRA) is left out of the the scope, we have covered Device Plugin aspects of it.
 
 ---
 
@@ -37,7 +41,8 @@ Note: Dynamic Resoure Allocation(DRA) is left out of the the scope, we have cove
 
 ### Physical GPU Access
 
-At the most fundamental level, a GPU is a PCIe device connected to the host system. The Linux kernel communicates with it through a sophisticated driver stack.
+At the most fundamental level, a GPU is a PCIe device connected to the host system. The Linux kernel communicates with it through 
+a sophisticated driver stack.
 
 #### GPU Driver Architecture
 
@@ -65,14 +70,15 @@ These character devices provide the fundamental interface between userspace appl
 
 Device files have specific ownership and permissions:
 ```bash
-$ ls -l /dev/nvidia*
+# ls -l /dev/nvidia*
 crw-rw-rw- 1 root root 195,   0 Oct 23 09:00 /dev/nvidia0
 crw-rw-rw- 1 root root 195,   1 Oct 23 09:00 /dev/nvidia1
 crw-rw-rw- 1 root root 195, 255 Oct 23 09:00 /dev/nvidiactl
 crw-rw-rw- 1 root root 509,   0 Oct 23 09:00 /dev/nvidia-uvm
 ```
 
-The major numbers (195 for nvidia devices, 509 for UVM) are registered with the Linux kernel and used by the device controller to route operations to the correct driver.
+The major (195 for nvidia devices, 509 for UVM) and minor number(0 or 1) are registered with the Linux kernel and used by 
+the device controller to route operations to the correct driver.
 
 ---
 
@@ -83,7 +89,7 @@ The major numbers (195 for nvidia devices, 509 for UVM) are registered with the 
 Containers use Linux namespaces to create isolated environments. By default, a container cannot access the host's GPU devices because:
 
 1. **Device namespace isolation**: Container has its own `/dev` filesystem
-2. **cgroups device controller**: Restricts which devices a process can access
+2. **cgroups device controller**: Controls which devices a process can access
 3. **Mount namespace**: Container filesystem doesn't include host device files
 
 ### NVIDIA Container Toolkit: Bridging the Gap
@@ -97,19 +103,19 @@ The **NVIDIA Container Toolkit** (formerly nvidia-docker2) solves this problem b
 └──────────────┬──────────────────────────┘
                │
                ↓
-┌─────────────────────────────────────────┐
+┌──────────────────────────────────────────┐
 │   nvidia-container-runtime               │
 │   (OCI-compliant runtime wrapper)        │
-└──────────────┬──────────────────────────┘
+└──────────────┬───────────────────────────┘
                │
                ↓
-┌─────────────────────────────────────────┐
+┌──────────────────────────────────────────┐
 │   nvidia-container-runtime-hook          │
 │   (Prestart hook)                        │
-└──────────────┬──────────────────────────┘
+└──────────────┬───────────────────────────┘
                │
                ↓
-┌─────────────────────────────────────────┐
+┌──────────────────────────────────────────┐
 │   nvidia-container-cli                   │
 │   (Performs actual GPU provisioning)     │
 └──────────────────────────────────────────┘
@@ -134,7 +140,7 @@ When a container requests GPU access, the NVIDIA Container Toolkit mounts:
 /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.535.104.05
 /usr/lib/x86_64-linux-gnu/libcuda.so.535.104.05
 /usr/lib/x86_64-linux-gnu/libnvidia-ptxjitcompiler.so.535.104.05
-# ... and many more
+# ... and few more
 ```
 
 **Utilities:**
@@ -167,6 +173,7 @@ The format `c 195:* rwm` means:
 ### Understanding the CUDA Stack
 
 CUDA applications communicate with GPUs through a layered software stack:
+
 ```
 ┌──────────────────────────────┐
 │   Your CUDA Application      │
@@ -204,9 +211,10 @@ CUDA applications communicate with GPUs through a layered software stack:
 
 ### CUDA in a Containerized Environment
 
-When you run a CUDA application inside a container, the call stack looks like:
+When user run a CUDA application inside a container, the call stack looks like:
+
 ```
-[Container] Your CUDA Application
+[Container] CUDA Application
                 ↓
 [Container] libcudart.so (CUDA Runtime)
                 ↓
@@ -223,7 +231,8 @@ When you run a CUDA application inside a container, the call stack looks like:
 
 #### The Critical Driver Compatibility Requirement
 
-**Key Point**: The `libcuda.so` driver library version must match the host kernel driver version. This is why we mount the driver library from the host rather than packaging it in the container image.
+**Key Point**: The `libcuda.so` driver library version must match the host kernel driver version. That is why its preferred 
+to mount the driver library from the host rather than packaging it in the container image.
 
 Example compatibility matrix:
 ```
@@ -234,14 +243,15 @@ Host Driver Version    Compatible CUDA Toolkit Versions
 515.65.01             CUDA 11.0 - 11.8
 ```
 
-The CUDA toolkit in your container must be compatible with the host's driver version, but it doesn't need to match exactly—newer drivers support older CUDA toolkits.
+The CUDA toolkit in container must be compatible with the host's driver version, but it doesn't need to 
+match exactly — newer drivers support older CUDA toolkits.
 
 ### A Simple CUDA Example
 
 Here's what happens when you run a basic CUDA program:
 ```c
-#include <cuda_runtime.h>
 #include <stdio.h>
+#include <cuda_runtime.h>
 
 int main() {
     float *d_data;
@@ -281,13 +291,13 @@ Kubernetes uses an extensible **Device Plugin** system to manage specialized har
 ```
 ┌────────────────────────────────────────┐
 │   kube-apiserver                       │
-│   (Node status: nvidia.com/gpu: 4)    │
+│   (Node status: nvidia.com/gpu: 4)     │
 └───────────────┬────────────────────────┘
                 │
                 ↓
 ┌────────────────────────────────────────┐
 │   kube-scheduler                       │
-│   (Finds nodes with requested GPUs)   │
+│   (Finds nodes with requested GPUs)    │
 └───────────────┬────────────────────────┘
                 │
                 ↓
@@ -310,6 +320,7 @@ Kubernetes uses an extensible **Device Plugin** system to manage specialized har
 ### Device Plugin Discovery and Registration
 
 The NVIDIA Device Plugin runs as a DaemonSet on every GPU node:
+
 ```yaml
 apiVersion: apps/v1
 kind: DaemonSet
@@ -708,8 +719,8 @@ Container starts
 
 Inside the container, our CUDA application executes:
 ```c
-#include <cuda_runtime.h>
 #include <stdio.h>
+#include <cuda_runtime.h>
 
 int main() {
     int deviceCount;
@@ -941,7 +952,7 @@ All containers:
   
 - **Cons:**
   - No memory isolation (security risk)
-  - No performance guarantees
+  - No performance(Qos) guarantees
   - One container can starve others
   - OOM on one container affects all
 
@@ -983,7 +994,8 @@ Can use the Kata containers to enable vGPU on the Kubernetes.
 
 ## The Container Device Interface (CDI) Revolution
 
-In 2023-2024, the container ecosystem began transitioning to the **Container Device Interface (CDI)**—a standardized specification that fundamentally changes how devices are exposed to containers.
+In 2023-2024, the container ecosystem began transitioning to the **Container Device Interface (CDI)** — 
+a standardized specification that fundamentally changes how devices are exposed to containers.
 
 ### The Problem CDI Solves
 
@@ -1172,36 +1184,6 @@ devices:
         - "NVIDIA_DRIVER_CAPABILITIES=compute,utility"
 ```
 
-### CDI Architecture
-```
-┌──────────────────────────────────────────┐
-│   Container Orchestrator                 │
-│   (Kubernetes, Podman, Docker)           │
-└─────────────┬────────────────────────────┘
-              │ Request: "nvidia.com/gpu=0"
-              ↓
-┌──────────────────────────────────────────┐
-│   Container Runtime                      │
-│   (containerd, CRI-O, Docker)            │
-│   + Native CDI Support                   │
-└─────────────┬────────────────────────────┘
-              │ Reads CDI specs from disk
-              ↓
-┌──────────────────────────────────────────┐
-│   CDI Specification Files                │
-│   /etc/cdi/*.yaml                        │
-│   /var/run/cdi/*.json                    │
-└─────────────┬────────────────────────────┘
-              │ Describes device configuration
-              ↓
-┌──────────────────────────────────────────┐
-│   Host System Resources                  │
-│   - Device nodes (/dev/nvidia*)          │
-│   - Libraries (libcuda.so, etc.)         │
-│   - Utilities (nvidia-smi)               │
-└──────────────────────────────────────────┘
-```
-
 CDI Specification Structure
 A CDI spec file contains three main sections:
 
@@ -1366,7 +1348,8 @@ func (m *NvidiaDevicePlugin) Allocate(
 }
 ```
 
-**Key simplification:** The device plugin no longer needs vendor-specific knowledge about mounts, device nodes, or environment variables. It simply returns CDI device identifiers.
+**Key simplification:** The device plugin no longer needs vendor-specific knowledge about mounts, device nodes, or environment variables. 
+It simply returns CDI device identifiers.
 
 #### Container Runtime Integration
 
