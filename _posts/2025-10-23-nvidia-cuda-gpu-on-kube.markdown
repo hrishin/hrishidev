@@ -1031,64 +1031,9 @@ No Standardization: Every vendor solved the problem differently
 
 #### The New Way: Declarative Device Specifications
 
-```yaml
-cdiVersion: "0.6.0"
-kind: nvidia.com/gpu
-devices:
-  - name: "0"
-    containerEdits:
-      deviceNodes:
-        - path: /dev/nvidia0
-          type: c
-          major: 195
-          minor: 0
-        - path: /dev/nvidiactl
-          type: c
-          major: 195
-          minor: 255
-        - path: /dev/nvidia-uvm
-          type: c
-          major: 509
-          minor: 0
-      mounts:
-        - hostPath: /usr/lib/x86_64-linux-gnu/libcuda.so.535.104.05
-          containerPath: /usr/lib/x86_64-linux-gnu/libcuda.so.1
-          options: ["ro", "nosuid", "nodev", "bind"]
-        - hostPath: /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.535.104.05
-          containerPath: /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1
-          options: ["ro", "nosuid", "nodev", "bind"]
-        - hostPath: /usr/bin/nvidia-smi
-          containerPath: /usr/bin/nvidia-smi
-          options: ["ro", "nosuid", "nodev", "bind"]
-      env:
-        - "NVIDIA_VISIBLE_DEVICES=0"
-        - "NVIDIA_DRIVER_CAPABILITIES=compute,utility"
-      hooks:
-        - hookName: createContainer
-          path: /usr/bin/nvidia-ctk
-          args: ["hook", "update-ldcache"]
-          
-  - name: "1"
-    containerEdits:
-      deviceNodes:
-        - path: /dev/nvidia1
-          type: c
-          major: 195
-          minor: 1
-        - path: /dev/nvidiactl
-          type: c
-          major: 195
-          minor: 255
-        - path: /dev/nvidia-uvm
-          type: c
-          major: 509
-          minor: 0
-      mounts:
-        # ... same libraries ...
-      env:
-        - "NVIDIA_VISIBLE_DEVICES=1"
-        - "NVIDIA_DRIVER_CAPABILITIES=compute,utility"
-```
+Instead of runtime hooks, CDI uses a static JSON/YAML file on each node (generated once by the vendor tool) that declaratively describes everything a runtime needs to inject a device into a container: device nodes, library mounts, environment variables, and hooks.
+
+The container runtime reads this file at container creation time and applies the edits directly to the OCI spec — no vendor wrapper required.
 
 ### CDI Architecture
 
@@ -1121,15 +1066,16 @@ devices:
 └──────────────────────────────────────────┘
 ```
 
-CDI provides a vendor-neutral, declarative JSON/YAML specification:
+A CDI spec file (`/etc/cdi/nvidia.yaml`) is generated once by `nvidia-ctk` and contains three main sections:
 
 ```yaml
 # /etc/cdi/nvidia.yaml
-cdiVersion: "0.6.0"
-kind: nvidia.com/gpu
+cdiVersion: "0.6.0"          # CDI specification version
+kind: nvidia.com/gpu          # Fully-qualified device kind (vendor.com/type)
+                              # Prevents collisions: nvidia.com/gpu, amd.com/gpu, intel.com/gpu
 devices:
   - name: "0"
-    containerEdits:
+    containerEdits:           # Everything to inject for this device
       deviceNodes:
         - path: /dev/nvidia0
           type: c
@@ -1160,7 +1106,7 @@ devices:
         - hookName: createContainer
           path: /usr/bin/nvidia-ctk
           args: ["hook", "update-ldcache"]
-          
+
   - name: "1"
     containerEdits:
       deviceNodes:
@@ -1177,32 +1123,11 @@ devices:
           major: 509
           minor: 0
       mounts:
-        # ... same libraries ...
+        # ... same libraries as device "0" ...
       env:
         - "NVIDIA_VISIBLE_DEVICES=1"
         - "NVIDIA_DRIVER_CAPABILITIES=compute,utility"
 ```
-
-CDI Specification Structure
-A CDI spec file contains three main sections:
-
-1. Device Definitions
-2. Container Edits
-3. Metadata
-
-```yaml
-cdiVersion: "0.6.0"          # CDI specification version
-kind: nvidia.com/gpu          # Fully-qualified device kind
-                              # Format: vendor.com/device-type
-```
-
-The `kind` follows a domain name pattern to prevent collisions:
-
-- `nvidia.com/gpu`
-- `amd.com/gpu`
-- `intel.com/gpu`
-- `xilinx.com/fpga`
-
 
 ### CDI vs Traditional Flow Comparison
 
@@ -1412,7 +1337,7 @@ from Kubernetes 1.32, addresses these limitations by replacing the opaque device
 declarative model visible to the scheduler.
 
 The official DRA driver for NVIDIA GPUs is maintained at
-**github.com/kubernetes-sigs/dra-driver-nvidia-gpu** under the `kubernetes-sigs` organisation.
+**[github.com/kubernetes-sigs/dra-driver-nvidia-gpu](https://github.com/kubernetes-sigs/dra-driver-nvidia-gpu)** under the `kubernetes-sigs` organisation.
 
 ### Why Device Plugin Falls Short
 
@@ -1556,7 +1481,7 @@ spec:
 
 ### NVIDIA DRA Driver (`dra-driver-nvidia-gpu`)
 
-The driver is maintained at **github.com/kubernetes-sigs/dra-driver-nvidia-gpu** and ships two
+The driver is maintained at **[github.com/kubernetes-sigs/dra-driver-nvidia-gpu](https://github.com/kubernetes-sigs/dra-driver-nvidia-gpu)** and ships two
 kubelet plugins:
 
 | Plugin | Status | Purpose |
