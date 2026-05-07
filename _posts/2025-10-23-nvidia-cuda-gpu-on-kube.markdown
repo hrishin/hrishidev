@@ -31,9 +31,8 @@ containerized workloads possible.
 6. [Layer 6: Complete Flow Example](#layer-6-complete-flow-example)
 7. [Layer 7: Advanced GPU Sharing](#layer-7-advanced-gpu-sharing)
 8. [The Container Device Interface (CDI) Revolution](#the-container-device-interface-cdi-revolution)
-9. [Conclusion](#conclusion)
-
-Note: Dynamic Resource Allocation(DRA) is left out of the the scope, we have covered Device Plugin aspects of it.
+9. [Dynamic Resource Allocation (DRA): Next-Generation GPU Scheduling](#dynamic-resource-allocation-dra-next-generation-gpu-scheduling)
+10. [Conclusion](#conclusion)
 
 ---
 
@@ -1404,17 +1403,370 @@ rocm-smi --showdriverversion
 rocm-cdi-generator --output=/etc/cdi/amd.yaml
 ```
 
+## Dynamic Resource Allocation (DRA): Next-Generation GPU Scheduling
+
+The **Device Plugin** framework (Layer 4) works well for simple whole-GPU assignment, but it has fundamental limitations
+when workloads need fine-grained control — specific MIG profiles, multi-node NVLink topology, shared resources, or
+per-claim lifecycle management. Kubernetes **Dynamic Resource Allocation (DRA)**, stabilised in `resource.k8s.io/v1`
+from Kubernetes 1.32, addresses these limitations by replacing the opaque device plugin gRPC API with a structured,
+declarative model visible to the scheduler.
+
+The official DRA driver for NVIDIA GPUs is maintained at
+**github.com/kubernetes-sigs/dra-driver-nvidia-gpu** under the `kubernetes-sigs` organisation.
+
+### Why Device Plugin Falls Short
+
+| Limitation | Device Plugin Behaviour |
+|---|---|
+| Resource granularity | Allocates whole devices; MIG is bolted on via separate resource names |
+| Topology awareness | Scheduler has no visibility into NVLink or NUMA topology |
+| Shared resources | No first-class concept; time-slicing is a plugin-level workaround |
+| Lifecycle | GPU bound to pod at creation; cannot be pre-allocated or shared across pods |
+| Introspection | Allocation decisions are a black box to the control plane |
+
+### DRA Core Concepts
+
+DRA replaces the device plugin gRPC interface with three Kubernetes API objects.
+
+#### ResourceSlice — Driver Advertises Devices
+
+A DRA driver publishes `ResourceSlice` objects (one per node) instead of calling `ListAndWatch()`.
+Each slice describes the devices on that node with structured, queryable attributes:
+
+```yaml
+apiVersion: resource.k8s.io/v1
+kind: ResourceSlice
+metadata:
+  name: node-gpu-01-nvidia-gpus
+spec:
+  driver: gpu.nvidia.com
+  pool:
+    name: node-gpu-01
+    resourceSliceCount: 1
+  nodeName: node-gpu-01
+  devices:
+  - name: gpu-0
+    basic:
+      attributes:
+        uuid:        { string: "GPU-a4f8c2d1-e5f6-7a8b-9c0d-1e2f3a4b5c6d" }
+        model:       { string: "NVIDIA H100 SXM5 80GB" }
+        profile:     { string: "3g.20gb" }        # populated for MIG slices
+        parentUUID:  { string: "GPU-a4f8c2d1..." } # used for co-location constraints
+      capacity:
+        memory: 80Gi
+```
+
+#### DeviceClass — Cluster Policy for a Device Type
+
+`DeviceClass` is a cluster-scoped object set by administrators. The NVIDIA DRA driver registers two
+device classes out of the box:
+
+- `gpu.nvidia.com` — whole GPU devices
+- `mig.nvidia.com` — MIG (Multi-Instance GPU) slices
+
+#### ResourceClaim — User Requests Devices
+
+Instead of `resources.limits.nvidia.com/gpu: 1`, a workload creates a `ResourceClaim`.
+The `exactly:` stanza specifies how many devices are required and optional CEL selectors:
+
+```yaml
+# Two pods, each getting their own single GPU
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaimTemplate       # per-pod claims for Jobs / Deployments
+metadata:
+  namespace: gpu-test1
+  name: single-gpu
+spec:
+  spec:
+    devices:
+      requests:
+      - name: gpu
+        exactly:
+          deviceClassName: gpu.nvidia.com
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: gpu-test1
+  name: pod1
+spec:
+  resourceClaims:
+  - name: gpu
+    resourceClaimTemplateName: single-gpu
+  containers:
+  - name: ctr
+    image: ubuntu:22.04
+    command: ["bash", "-c"]
+    args: ["nvidia-smi -L; trap 'exit 0' TERM; sleep 9999 & wait"]
+    resources:
+      claims:
+      - name: gpu
+  tolerations:
+  - key: "nvidia.com/gpu"
+    operator: "Exists"
+    effect: "NoSchedule"
+```
+
+Two containers in the **same pod** can share one GPU claim by both referencing the same entry:
+
+```yaml
+# One pod, two containers sharing one GPU
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaimTemplate
+metadata:
+  namespace: gpu-test2
+  name: single-gpu
+spec:
+  spec:
+    devices:
+      requests:
+      - name: gpu
+        exactly:
+          deviceClassName: gpu.nvidia.com
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: gpu-test2
+  name: shared-gpu-pod
+spec:
+  resourceClaims:
+  - name: shared-gpu
+    resourceClaimTemplateName: single-gpu
+  containers:
+  - name: ctr0
+    image: ubuntu:22.04
+    command: ["bash", "-c"]
+    args: ["nvidia-smi -L; trap 'exit 0' TERM; sleep 9999 & wait"]
+    resources:
+      claims:
+      - name: shared-gpu   # both containers reference the same claim
+  - name: ctr1
+    image: ubuntu:22.04
+    command: ["bash", "-c"]
+    args: ["nvidia-smi -L; trap 'exit 0' TERM; sleep 9999 & wait"]
+    resources:
+      claims:
+      - name: shared-gpu
+  tolerations:
+  - key: "nvidia.com/gpu"
+    operator: "Exists"
+    effect: "NoSchedule"
+```
+
+### NVIDIA DRA Driver (`dra-driver-nvidia-gpu`)
+
+The driver is maintained at **github.com/kubernetes-sigs/dra-driver-nvidia-gpu** and ships two
+kubelet plugins:
+
+| Plugin | Status | Purpose |
+|---|---|---|
+| `gpu-kubelet-plugin` | Experimental | Whole-GPU and MIG device allocation |
+| `compute-domain-kubelet-plugin` | Officially supported | Multi-Node NVLink / ComputeDomain orchestration |
+
+#### Architecture
+
+```
+┌────────────────────────────────────────────────────┐
+│   kube-apiserver                                   │
+│   ResourceSlice, ResourceClaim, DeviceClass        │
+└─────────────┬──────────────────────────────────────┘
+              │
+              ↓
+┌────────────────────────────────────────────────────┐
+│   kube-scheduler (DRA-aware)                       │
+│   Reads ResourceSlice attributes via CEL           │
+│   Writes allocation into ResourceClaim.status      │
+└─────────────┬──────────────────────────────────────┘
+              │
+              ↓
+┌────────────────────────────────────────────────────┐
+│   kubelet                                          │
+│   Calls DRA plugin NodePrepareResources() gRPC     │
+└─────────────┬──────────────────────────────────────┘
+              │
+              ↓
+┌────────────────────────────────────────────────────────────┐
+│  dra-driver-nvidia-gpu (DaemonSet on every GPU node)       │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  gpu-kubelet-plugin  (experimental)                 │   │
+│  │  - NodePrepareResources / NodeUnprepareResources    │   │
+│  │  - Writes CDI spec for the allocated GPU/MIG slice  │   │
+│  └─────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  compute-domain-kubelet-plugin  (supported)         │   │
+│  │  - Orchestrates IMEX daemons, domains, channels     │   │
+│  │  - Guarantees NVLink-reachability across nodes      │   │
+│  └─────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  controller (Deployment on control-plane)           │   │
+│  │  - Publishes ResourceSlice objects per node         │   │
+│  │  - Watches GPU inventory changes                    │   │
+│  └─────────────────────────────────────────────────────┘   │
+└────────────────┬───────────────────────────────────────────┘
+                 │  CDI device name
+                 ↓
+┌────────────────────────────────────────────────────┐
+│   containerd (CDI-aware)                           │
+│   Reads CDI spec, injects devices/libs/env         │
+└────────────────────────────────────────────────────┘
+```
+
+#### Installing via Helm
+
+The chart image is served from `registry.k8s.io/dra-driver-nvidia/dra-driver-nvidia-gpu`.
+GPU allocation is gated behind `gpuResourcesEnabledOverride=true` because it is still experimental.
+
+```bash
+helm upgrade -i \
+  --create-namespace \
+  --namespace dra-driver-nvidia-gpu \
+  dra-driver-nvidia-gpu \
+  oci://registry.k8s.io/dra-driver-nvidia/dra-driver-nvidia-gpu \
+  --set gpuResourcesEnabledOverride=true \
+  --wait
+
+# Verify — each GPU node should show a 2-container pod
+kubectl -n dra-driver-nvidia-gpu get pods
+# NAME                                  READY   STATUS
+# dra-driver-nvidia-gpu-node-xxxxx      2/2     Running
+```
+
+Requires Kubernetes 1.32+ with the `DynamicResourceAllocation` feature gate enabled.
+
+#### MIG Allocation via DRA
+
+DRA makes MIG allocation first-class. The `mig.nvidia.com` DeviceClass exposes individual MIG slices
+as devices in `ResourceSlice`. CEL selectors on the `profile` attribute replace the separate
+`nvidia.com/mig-3g.20gb` resource names used by the device plugin.
+
+The `matchAttribute` constraint ensures all requested slices come from the **same physical GPU**:
+
+```yaml
+# One pod, 4 containers — each getting a different MIG slice from the same A100
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaimTemplate
+metadata:
+  namespace: gpu-test4
+  name: mig-devices
+spec:
+  spec:
+    devices:
+      requests:
+      - name: mig-1g-5gb-0
+        exactly:
+          deviceClassName: mig.nvidia.com
+          selectors:
+          - cel:
+              expression: "device.attributes['gpu.nvidia.com'].profile == '1g.5gb'"
+      - name: mig-1g-5gb-1
+        exactly:
+          deviceClassName: mig.nvidia.com
+          selectors:
+          - cel:
+              expression: "device.attributes['gpu.nvidia.com'].profile == '1g.5gb'"
+      - name: mig-2g-10gb
+        exactly:
+          deviceClassName: mig.nvidia.com
+          selectors:
+          - cel:
+              expression: "device.attributes['gpu.nvidia.com'].profile == '2g.10gb'"
+      - name: mig-3g-20gb
+        exactly:
+          deviceClassName: mig.nvidia.com
+          selectors:
+          - cel:
+              expression: "device.attributes['gpu.nvidia.com'].profile == '3g.20gb'"
+      constraints:
+      - requests: []
+        matchAttribute: "gpu.nvidia.com/parentUUID"  # all slices from one GPU
+```
+
+The driver handles MIG instance creation and teardown as part of the claim lifecycle — no manual
+`nvidia-smi mig` commands needed.
+
+#### ComputeDomains — Multi-Node NVLink (Officially Supported)
+
+A **ComputeDomain** is an abstraction for robust, secure Multi-Node NVLink connectivity. It
+guarantees NVLink-reachability between all pods in the domain and isolates them from external pods.
+The driver internally orchestrates IMEX (Inter-MIG Extended) daemons, domains, and channels.
+
+```yaml
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaimTemplate
+metadata:
+  name: compute-domain
+spec:
+  spec:
+    devices:
+      requests:
+      - name: domain
+        exactly:
+          deviceClassName: computedomain.nvidia.com
+```
+
+Unlike the experimental GPU plugin, ComputeDomain support is officially maintained and production-ready.
+
+### DRA Scheduling Flow
+
+```
+User creates ResourceClaim (status: unallocated)
+         ↓
+kube-scheduler reads ResourceSlice objects from all nodes
+         ↓
+Evaluates CEL selectors against device attributes
+         ↓
+Scores and selects the best matching node
+         ↓
+Scheduler writes result into ResourceClaim.status.allocation:
+  {
+    "devices": { "results": [
+      { "driver": "gpu.nvidia.com", "pool": "node-gpu-01", "device": "gpu-0", "request": "gpu" }
+    ]}
+  }
+         ↓
+kubelet on node-gpu-01 sees the bound claim
+         ↓
+kubelet calls: gpu-kubelet-plugin.NodePrepareResources(claimUID)
+         ↓
+Driver writes CDI spec for the allocated device
+         ↓
+kubelet passes CDI device name to containerd
+         ↓
+containerd applies CDI spec → container starts with GPU access
+```
+
+The key difference from the device plugin flow: **the scheduler has full visibility into device
+attributes and makes the allocation decision**, rather than the plugin deciding inside an opaque
+gRPC call at pod start.
+
+### DRA vs Device Plugin Comparison
+
+| Aspect | Device Plugin | DRA Driver |
+|---|---|---|
+| Resource discovery | gRPC `ListAndWatch()` | `ResourceSlice` Kubernetes objects |
+| Resource request | `resources.limits` | `ResourceClaim` / `ResourceClaimTemplate` |
+| Scheduler visibility | Opaque count only | Full attributes queryable via CEL |
+| Allocation decision | Plugin at pod start | Scheduler at scheduling time |
+| MIG support | Separate resource names per profile | CEL selectors on `profile` attribute |
+| Multi-node NVLink | Not supported | ComputeDomain plugin (officially supported) |
+| Shared GPU between containers | Not supported | Supported via shared `ResourceClaim` |
+| Kubernetes version | Stable since 1.10 | GA (`v1`) from Kubernetes 1.32 |
+
+---
+
 ## Conclusion
 
 Lets summerize the GPU Container Enablement Flow
 
 ### Architecture Components
 1. **Kubernetes Scheduler** - Selects nodes with GPU resources
-2. **NVIDIA Device Plugin** - Discovers and advertises GPU devices
-3. **Kubelet** - Manages pod lifecycle
-4. **Container Runtime (containerd)** - Creates containers
-5. **NVIDIA Container Toolkit** - Provides GPU access hooks
-6. **GPU Hardware Layer** - Physical NVIDIA GPUs and drivers
+2. **NVIDIA Device Plugin** - Discovers and advertises GPU devices (traditional path)
+3. **NVIDIA DRA Driver** - Publishes ResourceSlice objects and prepares devices (modern path)
+4. **Kubelet** - Manages pod lifecycle
+5. **Container Runtime (containerd)** - Creates containers
+6. **NVIDIA Container Toolkit / CDI** - Provides GPU access hooks and declarative device specs
+7. **GPU Hardware Layer** - Physical NVIDIA GPUs and drivers
 
 ### Detailed Flow
 
@@ -1480,20 +1832,27 @@ graph TD
 
 ### Key Components
 
-#### GPU Device Plugin
-- Discovers GPU resources and advertises to Kubernetes
+#### GPU Device Plugin (Traditional Path)
+- Discovers GPU resources and advertises to Kubernetes via gRPC `ListAndWatch`
 - Manages GPU allocation to pods (DaemonSet)
+
+#### NVIDIA DRA Driver (Modern Path) — `kubernetes-sigs/dra-driver-nvidia-gpu`
+- Publishes structured `ResourceSlice` objects describing each GPU's attributes (`gpu.nvidia.com`) and MIG slices (`mig.nvidia.com`)
+- Implements `NodePrepareResources` so kubelet can activate allocated devices via CDI
+- `gpu-kubelet-plugin` (experimental): CEL-based GPU/MIG selection and lifecycle management
+- `compute-domain-kubelet-plugin` (supported): Multi-Node NVLink / ComputeDomain orchestration
+- Requires Kubernetes 1.32+ with `DynamicResourceAllocation` feature gate
 
 #### Kubelet
 - Node agent managing pod lifecycle
-- Communicates with device plugins and container runtime
+- Communicates with device plugins (traditional) or DRA driver plugins (DRA path) and container runtime
 
 #### Container Runtime (containerd)
-- Creates containers and integrates with NVIDIA Container Toolkit
+- Creates containers and integrates with NVIDIA Container Toolkit or CDI
 - Mounts GPU devices into containers
 
-#### NVIDIA Container Toolkit
-- Runtime hook for GPU container creation
-- Handles device mounting and driver access
+#### NVIDIA Container Toolkit / CDI
+- Runtime hook for GPU container creation (legacy path)
+- CDI: declarative JSON/YAML specs for vendor-neutral device injection (modern path used by DRA driver)
 
 
