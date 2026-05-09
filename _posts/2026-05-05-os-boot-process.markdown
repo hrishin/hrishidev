@@ -15,7 +15,6 @@ redirect_from:
 
 Pressing the power button on a modern computer triggers a carefully orchestrated sequence of events spanning firmware,
 bootloaders, the kernel, and init systems — each layer handing off to the next with increasing sophistication.
-Most developers interact with running systems without ever thinking about how they came to life.
 
 This post walks through every stage of that journey on a modern x86-64 Linux system, from the first CPU instruction
 executed out of reset to the login prompt waiting for your credentials.
