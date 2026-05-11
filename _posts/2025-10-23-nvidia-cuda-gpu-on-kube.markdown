@@ -1693,66 +1693,80 @@ Lets summerize the GPU Container Enablement Flow
 6. **NVIDIA Container Toolkit / CDI** - Provides GPU access hooks and declarative device specs
 7. **GPU Hardware Layer** - Physical NVIDIA GPUs and drivers
 
-### Detailed Flow
+### Device Plugin Flow
 
 ```mermaid!
 graph TD
-    A[User Submits Pod Request with GPU Resources] --> B[Kubernetes API Server]
-    B --> C[Scheduler]
-    C --> D{Node Selection Based on GPU Resources}
-    
-    D --> E[Selected Node with GPU]
-    E --> F[Kubelet on Selected Node]
-    
-    F --> G[NVIDIA Device Plugin]
-    G --> H[GPU Resource Discovery]
-    H --> I[Register GPU Devices with Kubelet]
-    I --> J[Update Node Capacity/Allocatable]
-    
-    F --> K[Container Runtime Interface CRI]
-    K --> L[containerd/CRI-O]
-    
-    L --> M[NVIDIA Container Toolkit]
-    M --> N[Nvidia-container-runtime]
-    N --> O[GPU Device Allocation]
-    
-    O --> P[Mount GPU Devices into Container]
-    P --> Q[Inject NVIDIA Libraries]
-    Q --> R[Set Environment Variables]
-    
-    R --> S[Container with GPU Access]
-    
-    subgraph "Node Components"
-        G
-        F
-        K
-        L
-        M
-        N
+    A["Pod: resources.limits.nvidia.com/gpu: 1"] -->|"① submit pod"| B[kube-apiserver]
+
+    subgraph "② Device Plugin Registration (startup, runs before scheduling)"
+        DP["NVIDIA Device Plugin (DaemonSet)"]
+        DP -->|"② ListAndWatch() — streams GPU UUIDs + health"| KL[kubelet]
+        KL -->|"② node status: nvidia.com/gpu: 4"| B
     end
-    
+
+    B -->|"③ unscheduled pod"| SC[kube-scheduler]
+    SC -->|"④ bind pod — node has enough nvidia.com/gpu"| KL
+    KL -->|"⑤ Allocate() gRPC — request GPU UUIDs"| DP
+    DP -->|"⑥ return envs + mounts + /dev/nvidia* specs"| KL
+    KL -->|"⑦ CreateContainer with device specs"| CR[containerd]
+    CR -->|"⑧ prestart hook"| NCT["NVIDIA Container Toolkit\n(nvidia-container-runtime-hook)"]
+    NCT -->|"⑨ configure GPU access"| GD["Mount /dev/nvidia*, nvidiactl, nvidia-uvm\nMount libcuda.so from host\nSet NVIDIA_VISIBLE_DEVICES\nConfigure cgroups device allowlist"]
+    GD -->|"⑩ start"| CONT["Container with GPU Access\n(CUDA app sees assigned GPUs only)"]
+
     subgraph "GPU Hardware Layer"
-        T[NVIDIA GPU Hardware]
-        U[NVIDIA Driver]
-        V[CUDA Libraries]
-        T --> U
-        U --> V
+        HW["Physical NVIDIA GPU"]
+        DRV["nvidia.ko kernel driver\n(/dev/nvidia* device files)"]
+        HW --> DRV
     end
-    
-    subgraph "Container Layer"
-        S
-        W[CUDA Runtime in Container]
-        X[Application Code]
-        S --> W
-        W --> X
-    end
-    
-    V -.-> M
-    
+
+    DRV -.->|"exposes device files"| NCT
+
     style A fill:#e1f5fe
-    style S fill:#c8e6c9
-    style G fill:#fff3e0
-    style M fill:#fce4ec
+    style CONT fill:#c8e6c9
+    style DP fill:#fff3e0
+    style NCT fill:#fce4ec
+    style GD fill:#fce4ec
+```
+
+### DRA Flow
+
+```mermaid!
+graph TD
+    A["ResourceClaimTemplate + Pod\n(devices.requests: gpu.nvidia.com)"] -->|"① submit"| B[kube-apiserver]
+
+    subgraph "DRA Driver (DaemonSet on GPU node)"
+        CTRL["controller\nPublishes ResourceSlice per node\nwatches GPU inventory"]
+        CTRL -->|"② ResourceSlice: uuid, model, profile, memory"| B
+        GPUP["gpu-kubelet-plugin (experimental)\nNodePrepareResources /\nNodeUnprepareResources"]
+        CDP["compute-domain-kubelet-plugin (supported)\nOrchestrates IMEX daemons\nMulti-Node NVLink domains"]
+    end
+
+    B -->|"③ unscheduled pod + unallocated claim"| SC["kube-scheduler (DRA-aware)"]
+    SC -->|"④ read ResourceSlice, evaluate CEL selectors"| SC
+    SC -->|"⑤ write allocation into ResourceClaim.status"| B
+    B -->|"⑥ pod bound to node"| KL[kubelet]
+    KL -->|"⑦ NodePrepareResources(claimUID)"| GPUP
+    GPUP -->|"⑧ write CDI spec for allocated GPU / MIG slice"| CDI["/etc/cdi/nvidia.yaml"]
+    KL -->|"⑨ CreateContainer + CDI device name nvidia.com/gpu=0"| CR["containerd (CDI-aware)"]
+    CDI -->|"⑩ read containerEdits: deviceNodes, mounts, env, hooks"| CR
+    CR -->|"⑪ start"| CONT["Container with GPU Access\n(standard runc, no vendor wrapper)"]
+
+    subgraph "GPU Hardware Layer"
+        HW["Physical NVIDIA GPU"]
+        DRV["nvidia.ko kernel driver\n(/dev/nvidia* device files)"]
+        HW --> DRV
+    end
+
+    DRV -.->|"device inventory"| CTRL
+
+    style A fill:#e1f5fe
+    style CONT fill:#c8e6c9
+    style GPUP fill:#fff3e0
+    style CDP fill:#fff3e0
+    style CTRL fill:#fff3e0
+    style CR fill:#fce4ec
+    style CDI fill:#fce4ec
 ```
 
 ### Key Components
