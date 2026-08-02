@@ -73,11 +73,13 @@ Device files have specific ownership and permissions:
 crw-rw-rw- 1 root root 195,   0 Oct 23 09:00 /dev/nvidia0
 crw-rw-rw- 1 root root 195,   1 Oct 23 09:00 /dev/nvidia1
 crw-rw-rw- 1 root root 195, 255 Oct 23 09:00 /dev/nvidiactl
-crw-rw-rw- 1 root root 509,   0 Oct 23 09:00 /dev/nvidia-uvm
+crw-rw-rw- 1 root root 509,   0 Oct 23 09:00 /dev/nvidia-uvm   # major varies — see note below
 ```
 
-The major (195 for nvidia devices, 509 for UVM) and minor number(0 or 1) are registered with the Linux kernel and used by 
-the device controller to route operations to the correct driver.
+The major number for NVIDIA GPU devices (`/dev/nvidia*`, `/dev/nvidiactl`, `/dev/nvidia-modeset`) is **195**, a fixed number
+registered at driver load time. The UVM device (`/dev/nvidia-uvm`) is different: its major number is **dynamically allocated**
+by the kernel's `misc` subsystem and is **not a stable value** — it varies across kernel versions and distributions.
+The value 509 shown above is illustrative; on kernels 6.x it is commonly 511. Minor numbers (0, 1, …) identify individual GPU instances.
 
 ---
 
@@ -156,7 +158,7 @@ The toolkit also configures cgroups to allow device access:
 # In the container's cgroup
 devices.allow: c 195:* rwm    # Allow all NVIDIA devices (major 195)
 devices.allow: c 195:255 rwm  # Allow nvidiactl
-devices.allow: c 509:* rwm    # Allow nvidia-uvm devices (major 509)
+devices.allow: c <uvm-major>:* rwm  # Allow nvidia-uvm (major dynamically assigned by kernel)
 ```
 
 The format `c 195:* rwm` means:
@@ -563,7 +565,7 @@ For each container, cgroups device controller is configured:
 # /sys/fs/cgroup/devices/kubepods/pod<uid>/<container-id>/devices.list
 c 195:0 rwm      # Allow /dev/nvidia0 only
 c 195:255 rwm    # Allow /dev/nvidiactl
-c 509:0 rwm      # Allow /dev/nvidia-uvm
+c <uvm-major>:0 rwm  # Allow /dev/nvidia-uvm (major dynamically assigned by kernel)
 
 # Implicit deny for:
 # c 195:1 (would be /dev/nvidia1)
@@ -686,7 +688,7 @@ containerd creates OCI spec:
       {"path": "/dev/nvidia0", "type": "c", "major": 195, "minor": 0},
       {"path": "/dev/nvidia1", "type": "c", "major": 195, "minor": 1},
       {"path": "/dev/nvidiactl", "type": "c", "major": 195, "minor": 255},
-      {"path": "/dev/nvidia-uvm", "type": "c", "major": 509, "minor": 0}
+      {"path": "/dev/nvidia-uvm", "type": "c", "major": 511, "minor": 0}  // major varies by kernel
     ],
     "resources": {
       "devices": [
@@ -694,7 +696,7 @@ containerd creates OCI spec:
         {"allow": true, "type": "c", "major": 195, "minor": 0, "access": "rwm"},
         {"allow": true, "type": "c", "major": 195, "minor": 1, "access": "rwm"},
         {"allow": true, "type": "c", "major": 195, "minor": 255, "access": "rwm"},
-        {"allow": true, "type": "c", "major": 509, "minor": 0, "access": "rwm"}
+        {"allow": true, "type": "c", "major": 511, "minor": 0, "access": "rwm"}  // UVM — major varies by kernel
       ]
     }
   },
@@ -840,7 +842,7 @@ $ nvidia-smi mig -cgi 1g.5gb -C
 $ ls -l /dev/nvidia*
 crw-rw-rw- 1 root root 195,   0 Oct 23 09:00 /dev/nvidia0          # Parent GPU
 crw-rw-rw- 1 root root 195, 255 Oct 23 09:00 /dev/nvidiactl
-crw-rw-rw- 1 root root 509,   0 Oct 23 09:00 /dev/nvidia-uvm
+crw-rw-rw- 1 root root 511,   0 Oct 23 09:00 /dev/nvidia-uvm       # major varies by kernel
 
 # MIG device files
 crw-rw-rw- 1 root root 195,   1 Oct 23 09:00 /dev/nvidia0mig0      # First 3g.20gb
@@ -1031,7 +1033,7 @@ No Standardization: Every vendor solved the problem differently
 
 #### The New Way: Declarative Device Specifications
 
-Instead of runtime hooks, CDI uses a static JSON/YAML file on each node (generated once by the vendor tool) that declaratively describes everything a runtime needs to inject a device into a container: device nodes, library mounts, environment variables, and hooks.
+Instead of runtime hooks, CDI uses a static YAML (or JSON) file on each node that declaratively describes everything a runtime needs to inject a device into a container: device nodes, library mounts, environment variables, and hooks. The NVIDIA Container Toolkit generates these files once via `nvidia-ctk cdi generate`; the NVIDIA DRA driver generates them dynamically at allocation time.
 
 The container runtime reads this file at container creation time and applies the edits directly to the OCI spec — no vendor wrapper required.
 
@@ -1052,9 +1054,9 @@ The container runtime reads this file at container creation time and applies the
               │ Reads CDI specs from disk
               ↓
 ┌──────────────────────────────────────────┐
-│   CDI Specification Files                │
-│   /etc/cdi/*.yaml                        │
-│   /var/run/cdi/*.json                    │
+│   CDI Specification Files (YAML or JSON) │
+│   /etc/cdi/*.yaml   ← static, admin-gen │
+│   /var/run/cdi/*.yaml ← dynamic, runtime│
 └─────────────┬────────────────────────────┘
               │ Describes device configuration
               ↓
@@ -1087,7 +1089,7 @@ devices:
           minor: 255
         - path: /dev/nvidia-uvm
           type: c
-          major: 509
+          major: 511  # dynamically assigned by kernel — verify with `ls -l /dev/nvidia-uvm`
           minor: 0
       mounts:
         - hostPath: /usr/lib/x86_64-linux-gnu/libcuda.so.535.104.05
@@ -1120,7 +1122,7 @@ devices:
           minor: 255
         - path: /dev/nvidia-uvm
           type: c
-          major: 509
+          major: 511  # dynamically assigned by kernel — verify with `ls -l /dev/nvidia-uvm`
           minor: 0
       mounts:
         # ... same libraries as device "0" ...
@@ -1292,7 +1294,7 @@ kubelet → containerd CRI: CreateContainer
          ↓
 containerd reads CDI annotation
          ↓
-containerd loads CDI registry from /etc/cdi/*.yaml
+containerd loads CDI registry from /etc/cdi/*.yaml and /var/run/cdi/*.yaml
          ↓
 For each CDI device:
   registry.GetDevice("nvidia.com/gpu=0")
@@ -1747,7 +1749,7 @@ graph TD
     SC -->|"⑤ write allocation into ResourceClaim.status"| B
     B -->|"⑥ pod bound to node"| KL[kubelet]
     KL -->|"⑦ NodePrepareResources(claimUID)"| GPUP
-    GPUP -->|"⑧ write CDI spec for allocated GPU / MIG slice"| CDI["/etc/cdi/nvidia.yaml"]
+    GPUP -->|"⑧ write CDI spec for allocated GPU / MIG slice"| CDI["/var/run/cdi/management.nvidia.com-gpu.yaml"]
     KL -->|"⑨ CreateContainer + CDI device name nvidia.com/gpu=0"| CR["containerd (CDI-aware)"]
     CDI -->|"⑩ read containerEdits: deviceNodes, mounts, env, hooks"| CR
     CR -->|"⑪ start"| CONT["Container with GPU Access\n(standard runc, no vendor wrapper)"]
@@ -1792,6 +1794,6 @@ graph TD
 
 #### NVIDIA Container Toolkit / CDI
 - Runtime hook for GPU container creation (legacy path)
-- CDI: declarative JSON/YAML specs for vendor-neutral device injection (modern path used by DRA driver)
+- CDI: declarative YAML specs for vendor-neutral device injection (modern path used by DRA driver); specs are written to `/etc/cdi/` (static, admin-generated) or `/var/run/cdi/` (dynamic, runtime-generated by the DRA driver)
 
 
