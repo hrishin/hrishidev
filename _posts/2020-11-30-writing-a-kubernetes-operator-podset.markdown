@@ -30,12 +30,13 @@ Apply it, and the controller creates the requested number of pods. Delete pods o
 
 ## Learning path
 
-Rather than dumping a finished controller, the repo is broken into branches (`step-1` through `step-4`) that build up incrementally:
+Rather than dumping a finished controller, the repo is broken into branches (`step-1` through `step-5`) that build up incrementally:
 
 - **Step 1** — Basic project scaffolding and code structure.
 - **Step 2** — Defining the `PodSet` CRD types, registering the CRD, and generating client APIs using `client-go` and the Kubernetes code generators (`deepcopy-gen`, `client-gen`, `informer-gen`, `lister-gen`).
 - **Step 3** — A functional controller demonstrating `watch` requests and a basic reconciliation loop.
 - **Step 4** — A production-pattern controller using shared informers, listers, and workqueues — the same building blocks `kube-controller-manager` itself is built from.
+- **Step 5** — The same production-pattern controller rebuilt on [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder), which scaffolds the informers, listers, and workqueue wiring for you.
 
 Each step is meant to be checked out and read on its own, so you can see exactly what changes (and why) as the controller matures from "watch and react" to something closer to what you'd actually run in production.
 
@@ -47,7 +48,7 @@ The project borrows heavily from the Kubernetes `sample-controller` and from *Pr
 
 Most of the confusion I saw when people first approach operators wasn't about *why* operators exist — it was the mechanics: what a shared informer actually buys you over a naive `watch`, why you need a workqueue instead of reacting to events inline, and how generated clientsets/listers fit together with your own reconcile code. Stepping through that incrementally, branch by branch, made those pieces click in a way that reading a finished, fully-loaded controller never did for me.
 
-I've since used this material to run hands-on sessions for engineers at both **Red Hat** and **JP Morgan**, walking through the same four steps, and it's also formed the basis of a couple of community talks at the [Kubernetes India Meetup](https://www.meetup.com/kubernetes-india-meetup/). It's been a good way to take people from "I've used `kubectl apply` on a CRD" to "I understand what my controller is actually doing when it wakes up."
+I've since used this material to run hands-on sessions for engineers at both **Red Hat** and **JP Morgan**, walking through the same steps, and it's also formed the basis of a couple of community talks at the [Kubernetes India Meetup](https://www.meetup.com/kubernetes-india-meetup/). It's been a good way to take people from "I've used `kubectl apply` on a CRD" to "I understand what my controller is actually doing when it wakes up."
 
 If you're getting started with writing your own operator, clone the repo, check out `step-1`, and work your way up. Happy to hear feedback or questions from anyone working through it.
 
