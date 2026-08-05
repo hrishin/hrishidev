@@ -57,3 +57,5 @@ If you're getting started with writing your own operator, clone the repo, check 
 [![Preparing for the meetup](/assets/image2.jpeg)](https://www.meetup.com/kubernetes-india-meetup/)
 
 [![Kubernetes India Meetup audience, wider view](/assets/iamge3.jpeg)](https://www.meetup.com/kubernetes-india-meetup/)
+
+*Photo courtesy of friends at [K8SBLR](https://x.com/k8sBLR).*
