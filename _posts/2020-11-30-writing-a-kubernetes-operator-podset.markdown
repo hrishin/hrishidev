@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Writing a Kubernetes Operator from scratch: the replication controller(PodSet Operator)"
+title:  "Writing a Kubernetes Operator from scratch: PodSet Operator(ReplicaSet controller)"
 date:   2020-11-30 10:00:00 +0000
 categories: kubernetes, operators, client-go
 ---
@@ -50,3 +50,9 @@ Most of the confusion I saw when people first approach operators wasn't about *w
 I've since used this material to run hands-on sessions for engineers at both **Red Hat** and **JP Morgan**, walking through the same four steps, and it's also formed the basis of a couple of community talks at the [Kubernetes India Meetup](https://www.meetup.com/kubernetes-india-meetup/). It's been a good way to take people from "I've used `kubectl apply` on a CRD" to "I understand what my controller is actually doing when it wakes up."
 
 If you're getting started with writing your own operator, clone the repo, check out `step-1`, and work your way up. Happy to hear feedback or questions from anyone working through it.
+
+[![Presenting PodSet custom resource at the Kubernetes India Meetup](/assets/image1.jpg)](https://www.meetup.com/kubernetes-india-meetup/)
+
+[![Preparing for the meetup](/assets/image2.jpeg)](https://www.meetup.com/kubernetes-india-meetup/)
+
+[![Kubernetes India Meetup audience, wider view](/assets/iamge3.jpeg)](https://www.meetup.com/kubernetes-india-meetup/)
