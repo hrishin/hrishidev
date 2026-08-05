@@ -2,7 +2,7 @@
 layout: post
 title:  "Writing a Kubernetes Operator from scratch: PodSet Operator(ReplicaSet controller)"
 date:   2020-11-30 10:00:00 +0000
-categories: kubernetes, operators, client-go
+categories: [kubernetes, operators, client-go]
 ---
 
 ## Background
