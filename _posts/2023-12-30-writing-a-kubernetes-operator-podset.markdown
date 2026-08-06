@@ -48,9 +48,9 @@ The project borrows heavily from the Kubernetes `sample-controller` and from *Pr
 
 ## Why I built this
 
-Import of the mechanics and curiosity: what a shared informer actually buys you over a naive `watch`, why you need a workqueue instead of reacting to events inline, and how generated clientsets/listers fit together with your own reconcile code. Stepping through that incrementally, step by step, made those pieces click in a way that reading a finished, fully-loaded controller never did for me.
+Importance of the mechanics and curiosity: what a shared informer actually buys you over a naive `watch`, why you need a workqueue instead of reacting to events inline, and how generated clientsets/listers fit together with your own reconcile code. Stepping through that incrementally, step by step, made those pieces click in a way that reading a finished, fully-loaded controller never did for me.
 
-I've since used this material to run hands-on sessions for engineers at both **Red Hat**, **DRW** and **JP Morgan**, walking through the same steps, and it's also formed the basis of a couple of community talks at the [Kubernetes India Meetup](https://www.meetup.com/kubernetes-india-meetup/). It's been a good way to take people from "I've used `kubectl apply` on a CRD" to "I understand what my controller is actually doing when it wakes up."
+I've since used this material to run hands-on sessions for engineers at both **Red Hat**, **DRW** and **JP Morgan** at work, walking through the same steps, and it's also formed the basis of a couple of community talks at the [Kubernetes India Meetup](https://www.meetup.com/kubernetes-india-meetup/). It's been a good way to take people from "I've used `kubectl apply` on a CRD" to "I understand what my controller is actually doing when it wakes up."
 
 If you're getting started with writing your own operator, clone the repo, check out `step-1`, and work your way up. Happy to hear feedback or questions from anyone working through it.
 
