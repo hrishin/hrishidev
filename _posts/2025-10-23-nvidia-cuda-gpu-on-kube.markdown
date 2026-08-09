@@ -1,11 +1,11 @@
 ---
 layout: post
-title:  "GPU from Silicon to Container: Deep dive into GPU Provisioning, Sharing and Administration in Kubernetes"
+title:  "GPU from Silicon to Container: Deep dive into GPU Provisioning, Sharing and Operations in Kubernetes"
 date:   2025-10-23 06:10:10 +0000
 categories: [CUDA, GPU, NVidia]
 redirect_from:
   - /cuda,/gpu,/nvidia/2025/10/23/nvidia-cuda-gpu-on-kube.html
-  - cuda/gpu/nvidia/2025/10/23/nvidia-cuda-gpu-on-kube.html
+  - /cuda/gpu/nvidia/2025/10/23/nvidia-cuda-gpu-on-kube.html
 ---
 
 *A deep dive into how Kubernetes makes GPUs accessible to containers, from bare metal to CUDA applications*
@@ -22,14 +22,18 @@ This guide traces that full path in three parts, mirroring how GPUs actually get
 
 - **Provisioning** — from the PCIe device and kernel driver, through the NVIDIA Container Toolkit and CUDA stack,
   to how Kubernetes discovers, schedules, and allocates GPUs to pods.
+
 - **Sharing** — the isolation and multiplexing options — MIG, time-slicing, MPS, HAMi, and vGPU — that let
   multiple workloads split a physical GPU, and what each one trades away to do it.
-- **Administration** — the standards and controllers that operate GPUs at scale: the Container Device Interface
+
+- **Evolution of GPUS and Container Technologies** - Container Device Interface
   (CDI) replacing vendor-specific runtime hooks, and Dynamic Resource Allocation (DRA) as the next generation of
   GPU scheduling.
 
-By the end, you'll be able to trace exactly what happens between a pod spec ``nvidia.com/gpu: 1`, container `cudaMalloc()` call succeeding
-on physical silicon.
+- **Operations** — running GPUs at scale on real clusters: the standards and controllers involved, plus the
+  configuration and reliability concerns that come up day to day.
+
+By the end, you'll be able to trace exactly what happens between a pod spec `nvidia.com/gpu: 1`, container `cudaMalloc()` call succeeding on physical silicon.
 
 ## Table of Contents
 
@@ -50,14 +54,17 @@ on physical silicon.
 
 8. [GPU Sharing Options](#gpu-sharing-options)
 
-**Container Standards**
+**Next Container Technologies**
 
 9. [The Container Device Interface (CDI) Revolution](#the-container-device-interface-cdi-revolution)
-
-**Administration**
-
 10. [Dynamic Resource Allocation (DRA): Next-Generation GPU Scheduling](#dynamic-resource-allocation-dra-next-generation-gpu-scheduling)
-11. [Conclusion](#conclusion)
+
+**Operations**
+
+11. [GPU Operator Troubleshooting](#gpu-operator-troubleshooting)
+12. [Installing the NVIDIA DRA Driver via Helm](#installing-the-nvidia-dra-driver-via-helm)
+13. [GPU Fleet Reliability: Day 1, Day 2, Observability](#gpu-fleet-reliability-day-1-day-2-observability)
+
 
 ---
 
@@ -107,7 +114,7 @@ physical GPU to execute on.
 
 ---
 
-## Provisioning
+## GPU Provisioning
 
 From the PCIe device and kernel driver, through the NVIDIA Container Toolkit and CUDA stack, to how Kubernetes
 discovers, schedules, and allocates GPUs to pods.
@@ -862,12 +869,13 @@ close(3) = 0
 
 ---
 
-## Sharing
+## GPU Device Sharing
 
-
-Default Kubernetes scheduling assigns GPUs as atomic units ([nvidia.com/gpu](https://nvidia.com/gpu): 8). 
+Default Kubernetes scheduling assigns GPUs as atomic units ([nvidia.com/gpu](https://nvidia.com/gpu): 1). 
 When a lightweight container requests a GPU, it monopolizes the entire device regardless of actual compute or memory utilization. 
-Running eight small workloads consumes all eight available cards, falsely reporting a fully saturated cluster while significant capacity remains wasted.
+A typical inference service often uses only fraction of GPU's compute and a small slice of its VRAM, leaving the
+rest idle — the gap this section is really about closing. Effective GPU's utilization is quite core of
+operating fleet of GPUS for Inferencing, Serving, Traiing or HPC use cases.
 
 The isolation and multiplexing options — MIG, time-slicing, MPS, HAMi, and vGPU — that let multiple workloads split a
 physical GPU, and what each one trades away to do it.
@@ -967,6 +975,9 @@ than treating MPS as strictly better or worse.
 
 This isn't a scheduler trick — the GPU's memory controllers and streaming multiprocessors
 (SMs) are physically fenced off per instance, so one tenant's workload literally cannot see or starve another's.
+
+MIG requires certain generation silicon or newer — **A100 was the first GPU to support it**, and it carries forward
+on A30, H100, H200, and Blackwell-class data-center cards.
 
 ##### MIG Architecture
 
@@ -1154,18 +1165,41 @@ spec:
         nvidia.com/mig-3g.20gb: 1  # Request one 3g.20gb instance
 ```
 
-##### MIG benefits
-- True hardware isolation (unlike time-slicing)
-- Guaranteed memory allocation
-- Fault isolation (one instance failure doesn't affect others)
-- Quality of Service (QoS) guarantees
+##### MIG Benefits
+
+The isolation here is real because it's physical, not scheduled: each GPU Instance owns its own slice of memory
+controllers, L2 cache, and DRAM, and each Compute Instance runs on SMs the GPU firmware has fenced off from every
+other instance's SMs. Contrast that with time-slicing and MPS above, where "isolation" really means a shared pool
+that trusts every co-tenant to behave.
+
+- **True hardware isolation.** A workload's memory and SMs simply don't exist from another instance's point of
+  view — there's no OOM contagion the way there is with time-slicing's shared pool or MPS's shared context.
+- **Guaranteed compute and memory bandwidth.** An instance's SM and memory-controller allocation is fixed at
+  creation time, so a neighbor running a compute-bound kernel can't steal cycles the way it can under time-slicing.
+- **Fault isolation.** An uncorrectable ECC error or Xid fault inside one GI is contained to that instance — it
+  doesn't take down the whole GPU or any other tenant's CI, unlike an MPS daemon crash, which kills every client
+  attached to it.
+- **QoS guarantees.** Because the split is enforced by hardware, `3g.20gb` always means exactly that much SM and
+  memory for the life of the instance, not a statistical average across however many neighbors happen to be
+  scheduled at once.
 
 ##### MIG Trade-offs
-- The GPU is partitioned into whatever profiles the hardware supports (`1g.5gb`, `3g.20gb`, …) — you can't ask for
-  an arbitrary split, only the combinations NVIDIA has defined for that silicon.
-- Reshaping the layout means destroying and recreating instances, which briefly takes the GPU offline.
-- Fixed profiles fit steady-state, predictable workloads (multi-tenant inference) far better than bursty or
-  variable-sized jobs.
+
+- **Only whole, predefined profiles.** The GPU is partitioned into whatever profiles the hardware supports
+  (`1g.5gb`, `3g.20gb`, …) — you can't ask for an arbitrary split, only the combinations NVIDIA has defined for
+  that silicon generation, and not every profile combination can coexist on the same GPU at once (placement
+  matters — see the `Start:Size` column in the `-lgi` output above).
+- **Reconfiguration takes the GPU offline.** Reshaping the layout means destroying and recreating instances,
+  which briefly interrupts every workload on that card, not just the one being resized. This is why the GPU
+  Operator's MIG Manager drains a node before it touches the layout (see below).
+- **Hardware-gated.** Only NVIDIA's data-center-class silicon supports it (A100, H100, and newer — no consumer
+  or older data-center cards), so unlike time-slicing it isn't something you can reach for on arbitrary hardware.
+- **Fixed-size fit, not elastic.** Profiles suit steady-state, predictable workloads — multi-tenant inference at
+  a known QPS — far better than bursty or variable-sized jobs, which either waste part of a profile they don't
+  fully use or don't fit any profile at all.
+- **CIs must be torn down before their GI.** The CLI enforces destroy-children-before-parent ordering, so
+  shrinking one tenant's slice to grow another's is a multi-step, workload-interrupting operation, not a live resize.
+
 
 ##### Who Actually Stands MIG Up
 
@@ -1186,29 +1220,9 @@ The manager reacts to that label by draining workloads, resetting the GPU, and r
 two `1g.24gb` slices on the same card) are still possible, just via a custom `mig-parted` ConfigMap instead of the
 canned label values.
 
-**Where this breaks in practice**, and worth budgeting time for when you're standing up a MIG-enabled node:
-
-- **containerd's config path isn't universal.** The GPU Operator's toolkit component assumes stock containerd
-  locations. On RKE2 or k3s the socket and config file live somewhere else entirely, and the toolkit will fail
-  silently against the wrong path unless you override `CONTAINERD_CONFIG` / `CONTAINERD_SOCKET` explicitly in the
-  Helm values.
-- **The MIG Manager treats "no label" as "no MIG."** If a node has no `nvidia.com/mig.config` label at all, the
-  manager's default reconciliation target is `all-disabled` — which will tear down any instances you carved by
-  hand the moment the manager starts watching that node. Label the node *before* you touch `nvidia-smi mig`, not
-  after.
-- **The manager only reacts to Kubernetes events, not hardware state.** If you SSH in and change the MIG layout
-  directly with `nvidia-smi`, the operator has no way to notice — its controller loop is driven by label
-  watches, not a poll of `nvidia-smi mig -lgi`. A stuck reconciliation usually means restarting the
-  `nvidia-mig-manager` DaemonSet or toggling the label off and back on to force a re-evaluation.
-- **The GI/CI hierarchy is enforced, not advisory.** Attempting to delete a GPU Instance while a Compute Instance
-  still lives inside it fails outright ("In use by another client"), and a slice with a running pod on it can't
-  be destroyed until that pod is evicted.
-- **New architectures need new container images.** Blackwell-class cards need a CUDA toolkit and PyTorch/TensorFlow
-  build compiled for that compute capability — an older NGC image will schedule fine and then fail at the first
-  kernel launch with an "unsupported" error that has nothing to do with Kubernetes.
-- **You can't see inside a slice from the outside.** Because isolation is hardware-enforced, standard cluster
-  GPU dashboards need per-slice telemetry (the DCGM exporter plus a MIG-aware Grafana dashboard) — whole-GPU
-  utilization graphs will just show the parent card and hide how the individual slices are actually being used.
+Standing up a MIG-enabled node this way has its own set of sharp edges — see
+[GPU Operator Troubleshooting](#gpu-operator-troubleshooting) in Operations for the failure modes worth
+budgeting time for.
 
 #### HAMi: Fractional GPUs Without Repartitioning Hardware
 
@@ -1297,19 +1311,19 @@ Hypervisor (VMware vSphere / KVM)
 ```
 
 Each vGPU appears as a complete GPU to the guest OS, enabling standard CUDA applications without modification.
-Can use the Kata containers to enable vGPU on the Kubernetes.
+Can use the [Kata containers to enable vGPU](https://github.com/kata-containers/kata-containers/blob/main/docs/use-cases/NVIDIA-GPU-passthrough-and-Kata.md) on the Kubernetes.
 
-`Note: In order to use vGPU, vGPU requires NVIDIA vGPU license`
+`Note: In order to use vGPU, vGPU may requires NVIDIA vGPU license`
 
 #### Comparison Matrix
 
 | Technology | Isolation | Memory | Performance | Flexibility | Use Case |
 |-----------|-----------|---------|-------------|-------------|----------|
 | **Full GPU** | Hardware | Dedicated | 100% | Low | Training, HPC |
+| **Time-Slicing** | None | Shared | Variable | High | Dev/Test, Jupyter notebooks |
 | **MIG** | Hardware | Dedicated | Guaranteed | Medium | Inference, Multi-tenant |
-| **HAMi** | Software (userspace intercept) | Metered, not walled off | Throttled share | High | Dev/Test, small inference, CI |
 | **MPS** | None (shared context) | Shared | Concurrent, no throttling | Medium | Many small/cooperative processes |
-| **Time-Slicing** | None | Shared | Variable | High | Dev/Test, Jupyter |
+| **HAMi** | Software (userspace intercept) | Metered, not walled off | Throttled share | High | Dev/Test, small inference, CI |
 | **vGPU** | Software | Isolated | Good | High | VDI, Cloud VMs |
 
 ---
@@ -1660,11 +1674,6 @@ rocm-cdi-generator --output=/etc/cdi/amd.yaml
 
 ---
 
-## Administration
-
-Dynamic Resource Allocation (DRA), the next generation of GPU scheduling that succeeds the device plugin
-framework for fine-grained, topology-aware device allocation.
-
 ### Dynamic Resource Allocation (DRA): Next-Generation GPU Scheduling
 
 The **[Device Plugin](#kubernetes-gpu-scheduling)** framework works well for simple whole-GPU assignment, but it has fundamental limitations
@@ -1874,54 +1883,6 @@ kubelet plugins:
 └────────────────────────────────────────────────────┘
 ```
 
-##### Installing via Helm
-
-The chart image is served from `registry.k8s.io/dra-driver-nvidia/dra-driver-nvidia-gpu`.
-GPU allocation is gated behind `gpuResourcesEnabledOverride=true` because it is still experimental —
-the upstream README is explicit that "GPU allocation features can be tried out" but "are not yet officially
-supported," which is why the Helm chart leaves the GPU kubelet plugin disabled unless you opt in.
-
-```bash
-helm upgrade -i \
-  --create-namespace \
-  --namespace dra-driver-nvidia-gpu \
-  dra-driver-nvidia-gpu \
-  oci://registry.k8s.io/dra-driver-nvidia/dra-driver-nvidia-gpu \
-  --set gpuResourcesEnabledOverride=true \
-  --wait
-
-# Verify — each GPU node should show a 2-container pod
-kubectl -n dra-driver-nvidia-gpu get pods
-# NAME                                  READY   STATUS
-# dra-driver-nvidia-gpu-node-xxxxx      2/2     Running
-```
-
-Requires Kubernetes 1.32+ with the `DynamicResourceAllocation` feature gate enabled.
-
-**A second, more opinionated install path** runs through the NVIDIA GPU Operator itself (v26.3.3+ ships DRA
-support as a documented install target rather than a bare Helm chart) — that route is worth knowing about because
-its prerequisites are noticeably stricter than "1.32+ with the feature gate on":
-
-- Kubernetes v1.34.2+ (bump to v1.36.0+ if you intend to mix traditional `resources.limits.nvidia.com/gpu`
-  requests with DRA claims on the same cluster)
-- GPU driver 580+, with CDI enabled in the container runtime
-- Node Feature Discovery and GPU Feature Discovery already deployed
-- GPU nodes labeled `nvidia.com/dra-kubelet-plugin=true`, and the traditional NVIDIA Device Plugin disabled on
-  those nodes — the two allocation paths aren't meant to run against the same GPUs at once
-
-Two operational rough edges are worth planning around before you rely on this in a real cluster:
-
-- **The NVIDIA Driver Manager doesn't cleanly evict the DRA kubelet plugin** when it needs to reload the driver —
-  the documented workaround is to pass the DRA node labels through `driver.manager.env` so the manager knows to
-  drain it first.
-- **A100 MIG reconfiguration doesn't auto-propagate to the DRA plugin.** After changing a MIG layout on an A100,
-  the `gpu-kubelet-plugin` needs a manual restart to pick up the new `ResourceSlice` shape — it won't notice on
-  its own the way [the MIG Manager does for the device-plugin path](#who-actually-stands-mig-up).
-
-And if you're upgrading an existing install from the pre-`v0.4.0` chart generation, set `nameOverride=nvidia-dra-driver-gpu`
-explicitly — omitting it produces duplicate manifests alongside the old release instead of replacing it.
-Downgrading back past `v0.4.0` isn't supported once you've moved forward.
-
 ##### MIG Allocation via DRA
 
 DRA makes MIG allocation first-class. The `mig.nvidia.com` DeviceClass exposes individual MIG slices
@@ -1931,40 +1892,55 @@ as devices in `ResourceSlice`. CEL selectors on the `profile` attribute replace 
 The `matchAttribute` constraint ensures all requested slices come from the **same physical GPU**:
 
 ```yaml
-# One pod, 4 containers — each getting a different MIG slice from the same A100
+apiVersion: resource.k8s.io/v1
+kind: ResourceSlice
+metadata:
+  name: computeinstance-e00xn5mewbsmgdd98v-gpu.nvidia.com-pjtvh
+spec:
+  devices:
+  - attributes:
+      parentUUID:
+        string: GPU-8ce1d817-8c25-50db-af0c-242b5437297f
+      productName:
+        string: NVIDIA H100 80GB HBM3
+      profile:
+        string: 4g.40gb
+    capacity:
+      memory:
+        value: 40448Mi
+      multiprocessors:
+        value: "64"
+    name: gpu-0-mig-4g40gb-5-0
+  - attributes:
+      parentUUID:
+        string: GPU-8ce1d817-8c25-50db-af0c-242b5437297f
+      productName:
+        string: NVIDIA H100 80GB HBM3
+      profile:
+        string: 3g.40gb
+    capacity:
+      memory:
+        value: 40448Mi
+      multiprocessors:
+        value: "60"
+    name: gpu-0-mig-3g40gb-9-4
+```
+
+```yaml
 apiVersion: resource.k8s.io/v1
 kind: ResourceClaimTemplate
 metadata:
-  namespace: gpu-test4
-  name: mig-devices
+  name: vllm-gpu
 spec:
   spec:
     devices:
       requests:
-      - name: mig-1g-5gb-0
+      - name: gpu
         exactly:
           deviceClassName: mig.nvidia.com
           selectors:
           - cel:
-              expression: "device.attributes['gpu.nvidia.com'].profile == '1g.5gb'"
-      - name: mig-1g-5gb-1
-        exactly:
-          deviceClassName: mig.nvidia.com
-          selectors:
-          - cel:
-              expression: "device.attributes['gpu.nvidia.com'].profile == '1g.5gb'"
-      - name: mig-2g-10gb
-        exactly:
-          deviceClassName: mig.nvidia.com
-          selectors:
-          - cel:
-              expression: "device.attributes['gpu.nvidia.com'].profile == '2g.10gb'"
-      - name: mig-3g-20gb
-        exactly:
-          deviceClassName: mig.nvidia.com
-          selectors:
-          - cel:
-              expression: "device.attributes['gpu.nvidia.com'].profile == '3g.20gb'"
+              expression: "device.attributes['gpu.nvidia.com'].profile == '4g.40gb' || device.attributes['gpu.nvidia.com'].profile == '3g.40gb'"
       constraints:
       - requests: []
         matchAttribute: "gpu.nvidia.com/parentUUID"  # all slices from one GPU
@@ -2059,6 +2035,203 @@ gRPC call at pod start.
 | Multi-node NVLink | Not supported | ComputeDomain plugin (officially supported) |
 | Shared GPU between containers | Not supported | Supported via shared `ResourceClaim` |
 | Kubernetes version | Stable since 1.10 | GA (`v1`) from Kubernetes 1.32 |
+
+---
+
+
+## Operations
+
+Operating GPUs at scale — keeping the GPU Operator's DaemonSets (and the MIG layouts they manage) healthy on real
+clusters, and Dynamic Resource Allocation (DRA), the next generation of GPU scheduling that succeeds the device
+plugin framework for fine-grained, topology-aware device allocation.
+
+### GPU Operator Troubleshooting
+
+The GPU Operator and its MIG Manager (introduced above in [Who Actually Stands MIG Up](#who-actually-stands-mig-up))
+do most of the day-to-day work of running MIG on a cluster, but the automation has sharp edges. Worth budgeting
+time for when you're standing up a MIG-enabled node:
+
+- **The MIG Manager treats "no label" as "no MIG."** If a node has no `nvidia.com/mig.config` label at all, the
+  manager's default reconciliation target is `all-disabled` — which will tear down any instances you carved by
+  hand the moment the manager starts watching that node. Label the node *before* you touch `nvidia-smi mig`, not
+  after.
+- **The manager only reacts to Kubernetes events, not hardware state.** If you SSH in and change the MIG layout
+  directly with `nvidia-smi`, the operator has no way to notice — its controller loop is driven by label
+  watches, not a poll of `nvidia-smi mig -lgi`. A stuck reconciliation usually means restarting the
+  `nvidia-mig-manager` DaemonSet or toggling the label off and back on to force a re-evaluation.
+- **The GI/CI hierarchy is enforced, not advisory.** Attempting to delete a GPU Instance while a Compute Instance
+  still lives inside it fails outright ("In use by another client"), and a slice with a running pod on it can't
+  be destroyed until that pod is evicted.
+- **New architectures need new container images.** Blackwell-class cards need a CUDA toolkit and PyTorch/TensorFlow
+  build compiled for that compute capability — an older NGC image will schedule fine and then fail at the first
+  kernel launch with an "unsupported" error that has nothing to do with Kubernetes.
+- **You can't see inside a slice from the outside.** Because isolation is hardware-enforced, standard cluster
+  GPU dashboards need per-slice telemetry (the DCGM exporter plus a MIG-aware Grafana dashboard) — whole-GPU
+  utilization graphs will just show the parent card and hide how the individual slices are actually being used.
+
+##### Containerd: CDI vs `runtimeClassName` vs non-kube containerd instance
+
+On a cluster running the [DRA driver](#dynamic-resource-allocation-dra-next-generation-gpu-scheduling)
+rather than the classic device plugin, the containerd drop-in that the GPU Operator's toolkit generates
+(`/etc/containerd/conf.d/99-nvidia.toml`, or wherever `CONTAINERD_CONFIG` actually points) has three key
+points worth reading before you go looking for a runtime-selection problem:
+
+```toml
+version = 3
+
+[plugins]
+
+  [plugins."io.containerd.cri.v1.runtime"]
+    cdi_spec_dirs = ["/etc/cdi", "/var/run/cdi"]
+    device_ownership_from_security_context = false
+    disable_apparmor = false
+    .....
+    enable_cdi = true
+
+  [plugins."io.containerd.cri.v1.runtime".containerd]
+      default_runtime_name = "runc"
+      ignore_blockio_not_enabled_errors = false
+      ignore_rdt_not_enabled_errors = false
+
+      [plugins."io.containerd.cri.v1.runtime".containerd.runtimes]
+
+        [plugins."io.containerd.cri.v1.runtime".containerd.runtimes.nvidia]
+          ...
+          [plugins."io.containerd.cri.v1.runtime".containerd.runtimes.nvidia.options]
+            BinaryName = "/usr/local/nvidia/toolkit/nvidia-container-runtime"
+            ...
+
+      [plugins."io.containerd.cri.v1.runtime".containerd.runtimes.nvidia-cdi]
+          [plugins."io.containerd.cri.v1.runtime".containerd.runtimes.nvidia-cdi.options]
+            BinaryName = "/usr/local/nvidia/toolkit/nvidia-container-runtime.cdi"
+            ...
+```
+
+- `default_runtime_name = "runc"` — plain `runc` stays the default; nothing needs `runtimeClassName: nvidia` set
+  explicitly.
+- `enable_cdi = true`, `cdi_spec_dirs = ["/etc/cdi", "/var/run/cdi"]` — this is what actually matters in a
+  DRA+CDI setup: since containers get GPUs via CDI device injection (driven by the DRA driver, not by selecting a
+  special runtime), a plain runc-launched pod still gets GPU access as long as CDI specs are present in one of
+  those directories.
+- Three NVIDIA runtimes are registered anyway (`nvidia`, `nvidia-cdi`, `nvidia-legacy`), each pointing at a
+  different binary under `/usr/local/nvidia/toolkit/` — available for pods that opt in via `runtimeClassName`, but
+  not required.
+
+Tracing one real pod (`vllm qwen pod`) through this confirmed all three points:
+
+1. **No runtime class used.** `qwen`'s pod spec has `runtimeClassName` empty — it runs under plain `runc`, not
+   `nvidia`/`nvidia-cdi`/`nvidia-legacy`.
+2. Howeer older device plugin which may not be using the CDI or if pod with `runtimeClass: nvidia`, could be relaying on the container, hook
+   as discussed earlier. Nvidial operator container toolkit, update the the right container contanerd config to add these `runtimes`
+   in containerd configuratoin. With some Kubernetes providers MicroK8s, RKE use difference contaienrd instance running on the system, hence containerd's config path isn't universal. So sometime malcontainerd configuration fails provisoin the GPU resources.
+
+   **FIX**: Passing the right containerd configuration to Nvidia GPU oprator chart
+
+   ```yaml
+      toolkit:
+        enabled: true
+        env:
+        - name: CONTAINERD_CONFIG
+          value: /var/lib/k8s-containerd/k8s-containerd/etc/containerd/config.toml
+        - name: CONTAINERD_SOCKET
+          value: /var/lib/k8s-containerd/k8s-containerd/run/containerd/containerd.sock
+        - name: CONTAINERD_RUNTIME_CLASS
+          value: nvidia
+   ```
+
+### Installing the NVIDIA DRA Driver via Helm
+
+The chart image for the [DRA driver](#dynamic-resource-allocation-dra-next-generation-gpu-scheduling) is served
+from `registry.k8s.io/dra-driver-nvidia/dra-driver-nvidia-gpu`. GPU allocation is gated behind
+`gpuResourcesEnabledOverride=true` because it is still experimental — the upstream README is explicit that "GPU
+allocation features can be tried out" but "are not yet officially supported," which is why the Helm chart leaves
+the GPU kubelet plugin disabled unless you opt in.
+
+```bash
+helm upgrade -i \
+  --create-namespace \
+  --namespace gpu-operator \
+  dra-driver-nvidia-gpu \
+  oci://registry.k8s.io/dra-driver-nvidia/dra-driver-nvidia-gpu \
+  --set gpuResourcesEnabledOverride=true \
+  --wait
+
+# Verify — each GPU node should show a 2-container pod
+kubectl -n gpu-operator get pods | grep dra
+nvidia-dra-driver-gpu-controller-699474f64f-h7ppr                 1/1     Running     0               4h17m
+nvidia-dra-driver-gpu-kubelet-plugin-gps66                        2/2     Running     0               42m
+
+```
+
+Requires Kubernetes 1.32+ with the `DynamicResourceAllocation` feature gate enabled.
+
+**A second, more opinionated install path** runs through the NVIDIA GPU Operator itself (v26.3.3+ ships DRA
+support as a documented install target rather than a bare Helm chart) — that route is worth knowing about because
+its prerequisites are noticeably stricter than "1.32+ with the feature gate on":
+
+- Kubernetes v1.34.2+ (bump to v1.36.0+ if you intend to mix traditional `resources.limits.nvidia.com/gpu`
+  requests with DRA claims on the same cluster)
+- GPU driver 580+, with CDI enabled in the container runtime
+- Node Feature Discovery and GPU Feature Discovery already deployed
+- GPU nodes labeled `nvidia.com/dra-kubelet-plugin=true`, and the traditional NVIDIA Device Plugin disabled on
+  those nodes — the two allocation paths aren't meant to run against the same GPUs at once
+
+Two operational rough edges are worth planning around before you rely on this in a real cluster:
+
+- **The NVIDIA Driver Manager doesn't cleanly evict the DRA kubelet plugin** when it needs to reload the driver —
+  the documented workaround is to pass the DRA node labels through `driver.manager.env` so the manager knows to
+  drain it first.
+- **A100 MIG reconfiguration doesn't auto-propagate to the DRA plugin.** After changing a MIG layout on an A100,
+  the `gpu-kubelet-plugin` needs a manual restart to pick up the new `ResourceSlice` shape — it won't notice on
+  its own the way [the MIG Manager does for the device-plugin path](#who-actually-stands-mig-up).
+
+And if you're upgrading an existing install from the pre-`v0.4.0` chart generation, set `nameOverride=nvidia-dra-driver-gpu`
+explicitly — omitting it produces duplicate manifests alongside the old release instead of replacing it.
+Downgrading back past `v0.4.0` isn't supported once you've moved forward.
+
+---
+
+### GPU Fleet Reliability: Day 1, Day 2, Observability
+
+A throttling GPU, a torn-down MIG slice nobody noticed, a `ResourceClaim` stuck unallocated — all look fine from
+`kubectl get pods`. Three tables: what to set up once, what to do when it breaks, what to check first.
+
+#### Day 1
+
+| Do | Verify |
+|---|---|
+| `devicePlugin.enabled: false` + `gpuResourcesEnabledOverride: true` — never both allocation paths on one GPU | `status.allocatable` has no `nvidia.com/gpu`; `kubectl get resourceslices` lists devices instead |
+| `driver.manager.env` sets `NODE_LABEL_FOR_GPU_POD_EVICTION`, same label as the DRA `kubeletPlugin.nodeSelector` | Env var present on the driver DaemonSet; node carries the label |
+| Pick MIG geometry on purpose | `nvidia-smi -L` — `all-4g.40gb` on an 80GB H100 fits exactly 1 instance and leaves the rest unpartitioned, not idle |
+| GPU node labels (`mig.config`, `dra-kubelet-plugin`) live in node-group IaC, not `kubectl label` | Label is in the git-tracked config — a preemptible node replacement won't carry a hand-applied one |
+| `strategy: { type: Recreate }` on any Deployment pinned to a single GPU/MIG instance | `RollingUpdate` deadlocks trying to claim the new pod's device before freeing the old one's |
+| `dcgmExporter.config.name` → custom `dcgm-metrics.csv` with XID/ECC/violation fields | Chart default (`dcp-metrics-included.csv`) omits all of them — diff live `/metrics` against what you need |
+| Serving framework's OTLP endpoint set | A trace actually lands in Tempo, checked before go-live |
+
+#### Day 2 Runbook
+
+| Trigger | Check | Fix |
+|---|---|---|
+| Driver version bump | `kubectl get pods -n gpu-operator \| grep -E "dcgm\|toolkit\|mig-manager\|kubelet-plugin"` | All `Running` → still restart the DRA kubelet-plugin anyway; a driver reload stales its `ResourceSlice` cache with zero failure signal |
+| MIG relabel | `kubectl get node <n> -o jsonpath='{.metadata.labels.nvidia\.com/mig\.config\.state}'` | `failed` → scale the GPU workload to 0 first (MIG Manager won't evict DRA pods), relabel again |
+| MIG relabel succeeded, scheduling still fails | `kubectl get resourceslice <name> -o yaml \| grep profile` | Still shows old shape → restart DRA kubelet-plugin (NVML only re-enumerates at startup) |
+| Node replaced (preemptible) | `kubectl get node <new> --show-labels \| grep mig.config` | Missing/wrong → fix node-group IaC, not the live node |
+| Pod `Pending`, `cannot allocate all claims` | `nvidia-smi -L` — device actually free? | Free → `kubectl delete pod <stuck>`, stale scheduler cache not a real conflict |
+| GPU rollout hangs | `kubectl rollout status` not progressing | `strategy: RollingUpdate` on scarce GPU deadlocks by design → `Recreate` |
+| Pod survived a driver-daemonset rollout in place | `kube_pod_start_time` unchanged across the rollout window | `NODE_LABEL_FOR_GPU_POD_EVICTION` missing/wrong — fix it, then manually cycle the pod |
+| Utilization graphs fine, capacity feels short | `ResourceSlice` device count vs `nvidia-smi -L` instance count | Homogeneous `all-<profile>` fragmenting the card → custom heterogeneous `mig-parted` config |
+
+#### Check in This Order
+
+1. **State fields** — `mig.config.state`, `ResourceClaim.status.allocation` populated or not. Every row above
+   was diagnosed here, not in Grafana.
+2. **DCGM** — per-slice (`GPU_I_ID`/`GPU_I_PROFILE`) works by default; fault fields need the Day 1 custom config.
+   Per-*pod* attribution (`enablePodLabels`) doesn't work under DRA — verified live, env var confirmed set,
+   no pod/namespace label ever appears, because it depends on the kubelet `podresources` API and DRA claims
+   don't populate it.
+3. **Traces** — vLLM's own spans (queue time, TTFT, prefill/decode) for per-request latency; a separate
+   lifecycle tracer (`scheduled → image-pull → container-start → model-ready`) for cold-start latency. Different
+   questions, neither substitutes for the other.
 
 ---
 
