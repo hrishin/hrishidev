@@ -160,14 +160,14 @@ Each MIG instance:
 ```bash
 # Enable MIG mode
 
-# nvidia-smi -i 0 -mig 1
+$ sudo nvidia-smi -i 0 -mig 1
 All done.
 ```
 
 ```bash
-# List All Profile 
+# List All Profile
 
-# nvidia-smi mig -i 0 -lgip
+$ sudo nvidia-smi mig -i 0 -lgip
 +-------------------------------------------------------------------------------+
 | GPU instance profiles:                                                        |
 | GPU   Name               ID    Instances   Memory     P2P    SM    DEC   ENC  |
@@ -201,7 +201,7 @@ All done.
 ```bash
 # Create GPU Instances (GI) — using profile IDs from your -lgip output. Example: one 3g.40gb (ID 9) and one 2g.20gb (ID 14):
 
-# nvidia-smi mig -i 0 -cgi 9,14
+$ sudo nvidia-smi mig -i 0 -cgi 9,14
 Successfully created GPU instance ID  2 on GPU  0 using profile MIG 3g.40gb (ID  9)
 Successfully created GPU instance ID  3 on GPU  0 using profile MIG 2g.20gb (ID 14)
 ```
@@ -210,7 +210,7 @@ Successfully created GPU instance ID  3 on GPU  0 using profile MIG 2g.20gb (ID 
 ```bash
 # List GIs to confirm IDs
 
-# nvidia-smi mig -i 0 -lgi
+$ sudo nvidia-smi mig -i 0 -lgi
 +---------------------------------------------------------+
 | GPU instances:                                          |
 | GPU   Name               Profile  Instance   Placement  |
@@ -227,10 +227,10 @@ Successfully created GPU instance ID  3 on GPU  0 using profile MIG 2g.20gb (ID 
 
 # Create Compute Instances (CI) inside each GI — using the default profile that consumes the full GI
 
-# nvidia-smi mig -i 0 -gi 2 -cci
+$ sudo nvidia-smi mig -i 0 -gi 2 -cci
 Successfully created compute instance ID  0 on GPU  0 GPU instance ID  2 using profile MIG 3g.40gb (ID  2)
 
-# nvidia-smi mig -i 0 -gi 3 -cci
+$ sudo nvidia-smi mig -i 0 -gi 3 -cci
 Successfully created compute instance ID  0 on GPU  0 GPU instance ID  3 using profile MIG 2g.20gb (ID  1)
 
 ```
@@ -239,7 +239,7 @@ Successfully created compute instance ID  0 on GPU  0 GPU instance ID  3 using p
 
 # List CIs to confirm
 
-# nvidia-smi mig -i 0 -lci
+$ sudo nvidia-smi mig -i 0 -lci
 +--------------------------------------------------------------------+
 | Compute instances:                                                 |
 | GPU     GPU       Name             Profile   Instance   Placement  |
@@ -255,7 +255,7 @@ Successfully created compute instance ID  0 on GPU  0 GPU instance ID  3 using p
 
 ```bash
 # New device files appear
-❯ # ls -l /dev/nvidia*
+$ ls -l /dev/nvidia*
   crw-rw-rw- 1 root root 195, 254 Aug  9 09:11 /dev/nvidia-modeset
   crw-rw-rw- 1 root root 236, 255 Aug  9 09:11 /dev/nvidia-nvswitchctl
   crw-rw-rw- 1 root root 511,   0 Aug  9 09:11 /dev/nvidia-uvm
