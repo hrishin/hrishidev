@@ -390,16 +390,19 @@ compute *per pod*, changeable purely through the pod spec.
 Where the device plugin flow in [Kubernetes GPU Scheduling](https://hrishi.dev/cuda/gpu/nvidia/2025/10/23/nvidia-cuda-gpu-on-kube-1.html#kubernetes-gpu-scheduling) (Part 1) only ever hands out whole GPU UUIDs,
 HAMi inserts itself at four points in that flow:
 
-```mermaid!
-%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
-flowchart TD
-    A["Pod requests nvidia.com/gpu + gpumem + gpucores"]
-    B["Mutating webhook reroutes the pod to the HAMi scheduler extender"]
-    C["HAMi scheduler checks aggregate count / memory / compute budgets<br/>across the cluster before binding (not just device count)"]
-    D["HAMi device plugin allocates a logical slot and injects libvgpu.so<br/>into the container via LD_PRELOAD"]
-    E["libvgpu.so intercepts CUDA memory-allocation and kernel-launch calls<br/>at runtime, enforcing the pod's memory ceiling and compute-time share"]
-
-    A --> B --> C --> D --> E
+```
+Pod requests nvidia.com/gpu + gpumem + gpucores
+              ↓
+Mutating webhook reroutes the pod to the HAMi scheduler extender
+              ↓
+HAMi scheduler checks aggregate count / memory / compute budgets
+across the cluster before binding (not just device count)
+              ↓
+HAMi device plugin allocates a logical slot and injects libvgpu.so
+into the container via LD_PRELOAD
+              ↓
+libvgpu.so intercepts CUDA memory-allocation and kernel-launch calls
+at runtime, enforcing the pod's memory ceiling and compute-time share
 ```
 
 The pod spec gains two extended resources beyond the familiar `nvidia.com/gpu` count:

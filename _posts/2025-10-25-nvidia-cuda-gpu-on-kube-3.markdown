@@ -43,15 +43,14 @@ a standardized specification that fundamentally changes how devices are exposed 
 
 Before CDI, each hardware vendor needed custom integration:
 
-```mermaid!
-%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
-flowchart TD
-    A["Container Runtime (containerd)"]
-    B["nvidia-container-runtime (wrapper)<br/>← NVIDIA-specific"]
-    C["nvidia-container-runtime-hook<br/>← Vendor logic"]
-    D["nvidia-container-cli<br/>← Device provisioning"]
-
-    A --> B --> C --> D
+```
+Container Runtime (containerd)
+              ↓
+nvidia-container-runtime (wrapper) ← NVIDIA-specific
+              ↓
+nvidia-container-runtime-hook ← Vendor logic
+              ↓
+nvidia-container-cli ← Device provisioning
 ```
 
 Problem:
@@ -69,17 +68,20 @@ The container runtime reads this file at container creation time and applies the
 
 ### CDI Architecture
 
-```mermaid!
-%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
-flowchart TD
-    A["Container Orchestrator<br/>(Kubernetes, Podman, Docker)"]
-    B["Container Runtime<br/>(containerd, CRI-O, Docker)<br/>+ Native CDI Support"]
-    C["CDI Specification Files (YAML or JSON)<br/>/etc/cdi/*.yaml ← static, admin-gen<br/>/var/run/cdi/*.yaml ← dynamic, runtime"]
-    D["Host System Resources<br/>- Device nodes (/dev/nvidia*)<br/>- Libraries (libcuda.so, etc.)<br/>- Utilities (nvidia-smi)"]
-
-    A -->|"Request: nvidia.com/gpu=0"| B
-    B -->|Reads CDI specs from disk| C
-    C -->|Describes device configuration| D
+```
+Container Orchestrator (Kubernetes, Podman, Docker)
+              ↓  Request: nvidia.com/gpu=0
+Container Runtime (containerd, CRI-O, Docker)
+  + Native CDI Support
+              ↓  Reads CDI specs from disk
+CDI Specification Files (YAML or JSON)
+  /etc/cdi/*.yaml ← static, admin-gen
+  /var/run/cdi/*.yaml ← dynamic, runtime
+              ↓  Describes device configuration
+Host System Resources
+  - Device nodes (/dev/nvidia*)
+  - Libraries (libcuda.so, etc.)
+  - Utilities (nvidia-smi)
 ```
 
 A CDI spec file (`/etc/cdi/nvidia.yaml`) is generated once by `nvidia-ctk` and contains three main sections:
@@ -156,25 +158,15 @@ devices:
 
 #### Traditional NVIDIA Container Toolkit Flow
 
-<div class="mermaid-compact">
-
-```mermaid!
-%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
-flowchart TD
-    A["1. User runs container:<br/>docker run --gpus all nvidia/cuda"]
-    B["2. Docker daemon calls nvidia-container-runtime"]
-    C["3. nvidia-container-runtime wraps runc"]
-    D["4. Prestart hook executes: nvidia-container-runtime-hook"]
-    E["5. Hook reads --gpus flag and NVIDIA_VISIBLE_DEVICES"]
-    F["6. nvidia-container-cli dynamically queries nvidia-smi"]
-    G["7. Determines required devices, libraries, mounts"]
-    H["8. Modifies OCI spec on-the-fly (adds devices, mounts, env)"]
-    I["9. runc creates container with GPU access"]
-
-    A --> B --> C --> D --> E --> F --> G --> H --> I
-```
-
-</div>
+1. User runs container: `docker run --gpus all nvidia/cuda`
+2. Docker daemon calls `nvidia-container-runtime`
+3. `nvidia-container-runtime` wraps `runc`
+4. Prestart hook executes: `nvidia-container-runtime-hook`
+5. Hook reads `--gpus` flag and `NVIDIA_VISIBLE_DEVICES`
+6. `nvidia-container-cli` dynamically queries `nvidia-smi`
+7. Determines required devices, libraries, mounts
+8. Modifies OCI spec on-the-fly (adds devices, mounts, env)
+9. `runc` creates container with GPU access
 
 **Characteristics:**
 - Dynamic device discovery at container start
@@ -184,24 +176,18 @@ flowchart TD
 
 #### CDI-Based Flow
 
-<div class="mermaid-compact">
-
-```mermaid!
-%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
-flowchart TD
-    A["1. One-time setup (on node):<br/>nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml"]
-    B["2. User runs container:<br/>docker run --device nvidia.com/gpu=0 nvidia/cuda"]
-    C["3. containerd (with native CDI support) receives request"]
-    D["4. Parses CDI device name: 'nvidia.com/gpu=0'"]
-    E["5. Looks up device in /etc/cdi/nvidia.yaml"]
-    F["6. Reads containerEdits for device '0'"]
-    G["7. Applies edits to OCI spec:<br/>- Adds device nodes<br/>- Adds mounts<br/>- Sets environment variables<br/>- Registers hooks"]
-    H["8. runc creates container with GPU access"]
-
-    A --> B --> C --> D --> E --> F --> G --> H
-```
-
-</div>
+1. One-time setup (on node): `nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml`
+2. User runs container: `docker run --device nvidia.com/gpu=0 nvidia/cuda`
+3. `containerd` (with native CDI support) receives request
+4. Parses CDI device name: `nvidia.com/gpu=0`
+5. Looks up device in `/etc/cdi/nvidia.yaml`
+6. Reads `containerEdits` for device `0`
+7. Applies edits to OCI spec:
+   - Adds device nodes
+   - Adds mounts
+   - Sets environment variables
+   - Registers hooks
+8. `runc` creates container with GPU access
 
 **Characteristics:**
 
@@ -296,24 +282,32 @@ It simply returns CDI device identifiers.
 
 When kubelet creates a container with CDI devices:
 
-<div class="mermaid-compact">
-
-```mermaid!
-%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
-flowchart TD
-    A["kubelet receives CDI device names from device plugin:<br/>['nvidia.com/gpu=0', 'nvidia.com/gpu=1']"]
-    B["kubelet adds CDI annotation to container config:<br/>annotations: { 'cdi.k8s.io/devices':<br/>'nvidia.com/gpu=0,nvidia.com/gpu=1' }"]
-    C["kubelet → containerd CRI: CreateContainer"]
-    D["containerd reads CDI annotation"]
-    E["containerd loads CDI registry from<br/>/etc/cdi/*.yaml and /var/run/cdi/*.yaml"]
-    F["For each CDI device:<br/>registry.GetDevice('nvidia.com/gpu=0')<br/>registry.GetDevice('nvidia.com/gpu=1')"]
-    G["Applies container edits to OCI spec:<br/>- Merges all device nodes<br/>- Merges all mounts<br/>- Merges all environment variables<br/>- Collects all hooks"]
-    H["Creates final OCI spec and calls runc"]
-
-    A --> B --> C --> D --> E --> F --> G --> H
 ```
-
-</div>
+kubelet receives CDI device names from device plugin:
+  ['nvidia.com/gpu=0', 'nvidia.com/gpu=1']
+              ↓
+kubelet adds CDI annotation to container config:
+  annotations: { 'cdi.k8s.io/devices': 'nvidia.com/gpu=0,nvidia.com/gpu=1' }
+              ↓
+kubelet → containerd CRI: CreateContainer
+              ↓
+containerd reads CDI annotation
+              ↓
+containerd loads CDI registry from
+  /etc/cdi/*.yaml and /var/run/cdi/*.yaml
+              ↓
+For each CDI device:
+  registry.GetDevice('nvidia.com/gpu=0')
+  registry.GetDevice('nvidia.com/gpu=1')
+              ↓
+Applies container edits to OCI spec:
+  - Merges all device nodes
+  - Merges all mounts
+  - Merges all environment variables
+  - Collects all hooks
+              ↓
+Creates final OCI spec and calls runc
+```
 
 #### Generating CDI Specifications
 **NVIDIA Container Toolkit**
@@ -524,28 +518,31 @@ kubelet plugins:
 
 ##### Architecture
 
-<div class="mermaid-compact">
-
-```mermaid!
-%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
-flowchart TD
-    A["kube-apiserver<br/>ResourceSlice, ResourceClaim, DeviceClass"]
-    B["kube-scheduler (DRA-aware)<br/>Reads ResourceSlice attributes via CEL<br/>Writes allocation into ResourceClaim.status"]
-    C["kubelet<br/>Calls DRA plugin NodePrepareResources() gRPC"]
-
-    subgraph D["dra-driver-nvidia-gpu (DaemonSet on every GPU node)"]
-        D1["gpu-kubelet-plugin (experimental)<br/>- NodePrepareResources / NodeUnprepareResources<br/>- Writes CDI spec for the allocated GPU/MIG slice"]
-        D2["compute-domain-kubelet-plugin (supported)<br/>- Orchestrates IMEX daemons, domains, channels<br/>- Guarantees NVLink-reachability across nodes"]
-        D3["controller (Deployment on control-plane)<br/>- Publishes ResourceSlice objects per node<br/>- Watches GPU inventory changes"]
-    end
-
-    E["containerd (CDI-aware)<br/>Reads CDI spec, injects devices/libs/env"]
-
-    A --> B --> C --> D
-    D -->|CDI device name| E
 ```
-
-</div>
+kube-apiserver
+  ResourceSlice, ResourceClaim, DeviceClass
+              ↓
+kube-scheduler (DRA-aware)
+  Reads ResourceSlice attributes via CEL
+  Writes allocation into ResourceClaim.status
+              ↓
+kubelet
+  Calls DRA plugin NodePrepareResources() gRPC
+              ↓
+dra-driver-nvidia-gpu — three independently deployed components:
+  ├─ gpu-kubelet-plugin (experimental, DaemonSet on every GPU node)
+  │    - NodePrepareResources / NodeUnprepareResources
+  │    - Writes CDI spec for the allocated GPU/MIG slice
+  ├─ compute-domain-kubelet-plugin (supported, DaemonSet on every GPU node)
+  │    - Orchestrates IMEX daemons, domains, channels
+  │    - Guarantees NVLink-reachability across nodes
+  └─ controller (Deployment, control-plane)
+       - Publishes ResourceSlice objects per node
+       - Watches GPU inventory changes
+              ↓  CDI device name
+containerd (CDI-aware)
+  Reads CDI spec, injects devices/libs/env
+```
 
 ##### MIG Allocation via DRA
 
@@ -661,26 +658,30 @@ instead of failing outright.
 
 #### DRA Scheduling Flow
 
-<div class="mermaid-compact">
-
-```mermaid!
-%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
-flowchart TD
-    A["User creates ResourceClaim (status: unallocated)"]
-    B["kube-scheduler reads ResourceSlice objects from all nodes"]
-    C["Evaluates CEL selectors against device attributes"]
-    D["Scores and selects the best matching node"]
-    E["Scheduler writes result into ResourceClaim.status.allocation:<br/>{ 'devices': { 'results': [<br/>{ 'driver': 'gpu.nvidia.com', 'pool': 'node-gpu-01',<br/>'device': 'gpu-0', 'request': 'gpu' } ]} }"]
-    F["kubelet on node-gpu-01 sees the bound claim"]
-    G["kubelet calls: gpu-kubelet-plugin.NodePrepareResources(claimUID)"]
-    H["Driver writes CDI spec for the allocated device"]
-    I["kubelet passes CDI device name to containerd"]
-    J["containerd applies CDI spec → container starts with GPU access"]
-
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J
 ```
-
-</div>
+User creates ResourceClaim (status: unallocated)
+              ↓
+kube-scheduler reads ResourceSlice objects from all nodes
+              ↓
+Evaluates CEL selectors against device attributes
+              ↓
+Scores and selects the best matching node
+              ↓
+Scheduler writes result into ResourceClaim.status.allocation:
+  { 'devices': { 'results': [
+  { 'driver': 'gpu.nvidia.com', 'pool': 'node-gpu-01',
+  'device': 'gpu-0', 'request': 'gpu' } ]} }
+              ↓
+kubelet on node-gpu-01 sees the bound claim
+              ↓
+kubelet calls: gpu-kubelet-plugin.NodePrepareResources(claimUID)
+              ↓
+Driver writes CDI spec for the allocated device
+              ↓
+kubelet passes CDI device name to containerd
+              ↓
+containerd applies CDI spec → container starts with GPU access
+```
 
 The key difference from the device plugin flow: **the scheduler has full visibility into device
 attributes and makes the allocation decision**, rather than the plugin deciding inside an opaque
@@ -1121,10 +1122,7 @@ Let's summarize the GPU container enablement flow:
 
 ### Device Plugin Flow
 
-<div class="mermaid-compact">
-
 ```mermaid!
-%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
 graph TD
     A["Pod: resources.limits.nvidia.com/gpu: 1"] -->|"① submit pod"| B[kube-apiserver]
 
@@ -1158,14 +1156,9 @@ graph TD
     style GD fill:#fce4ec
 ```
 
-</div>
-
 ### DRA Flow
 
-<div class="mermaid-compact">
-
 ```mermaid!
-%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
 graph TD
     A["ResourceClaimTemplate + Pod\n(devices.requests: gpu.nvidia.com)"] -->|"① submit"| B[kube-apiserver]
 
@@ -1202,8 +1195,6 @@ graph TD
     style CR fill:#fce4ec
     style CDI fill:#fce4ec
 ```
-
-</div>
 
 ### Key Components
 

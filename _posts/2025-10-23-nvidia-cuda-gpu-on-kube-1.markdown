@@ -181,15 +181,14 @@ Containers use Linux namespaces to create isolated environments. By default, a c
 The **NVIDIA Container Toolkit** (formerly nvidia-docker2) solves this problem by modifying the container creation process.
 
 ##### Component Architecture
-```mermaid!
-%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
-flowchart TD
-    A["Container Runtime<br/>(Docker/containerd)"]
-    B["nvidia-container-runtime<br/>(OCI-compliant runtime wrapper)"]
-    C["nvidia-container-runtime-hook<br/>(Prestart hook)"]
-    D["nvidia-container-cli<br/>(Performs actual GPU provisioning)"]
-
-    A --> B --> C --> D
+```
+Container Runtime (Docker/containerd)
+              ↓
+nvidia-container-runtime (OCI-compliant runtime wrapper)
+              ↓
+nvidia-container-runtime-hook (Prestart hook)
+              ↓
+nvidia-container-cli (Performs actual GPU provisioning)
 ```
 
 ##### What Gets Mounted Into the Container
@@ -245,34 +244,41 @@ The format `c 195:* rwm` means:
 
 CUDA applications communicate with GPUs through a layered software stack:
 
-```mermaid!
-%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
-flowchart TD
-    A["Your CUDA Application<br/>(compiled with nvcc)"]
-    B["CUDA Runtime API<br/>(libcudart.so)<br/>- cudaMalloc()<br/>- cudaMemcpy()<br/>- kernel&lt;&lt;&lt;&gt;&gt;&gt;()"]
-    C["CUDA Driver API<br/>(libcuda.so)<br/>- cuMemAlloc()<br/>- cuLaunchKernel()"]
-    D["Kernel Driver<br/>(nvidia.ko)"]
-    E["Physical GPU Hardware"]
-
-    A --> B --> C --> D --> E
+```
+Your CUDA Application (compiled with nvcc)
+              ↓
+CUDA Runtime API (libcudart.so)
+  - cudaMalloc()
+  - cudaMemcpy()
+  - kernel<<<...>>>()
+              ↓
+CUDA Driver API (libcuda.so)
+  - cuMemAlloc()
+  - cuLaunchKernel()
+              ↓
+Kernel Driver (nvidia.ko)
+              ↓
+Physical GPU Hardware
 ```
 
 #### CUDA in a Containerized Environment
 
 When a user runs a CUDA application inside a container, the call stack looks like:
 
-```mermaid!
-%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
-flowchart TD
-    A["[Container] CUDA Application"]
-    B["[Container] libcudart.so (CUDA Runtime)"]
-    C["[Mounted from Host] libcuda.so (CUDA Driver Library)"]
-    D["[ioctl() system calls]"]
-    E["[Mounted Device] /dev/nvidia0"]
-    F["[Host Kernel] nvidia.ko driver"]
-    G["[Physical Hardware] GPU"]
-
-    A --> B --> C --> D --> E --> F --> G
+```
+[Container] CUDA Application
+              ↓
+[Container] libcudart.so (CUDA Runtime)
+              ↓
+[Mounted from Host] libcuda.so (CUDA Driver Library)
+              ↓
+[ioctl() system calls]
+              ↓
+[Mounted Device] /dev/nvidia0
+              ↓
+[Host Kernel] nvidia.ko driver
+              ↓
+[Physical Hardware] GPU
 ```
 
 ##### The Critical Driver Compatibility Requirement
@@ -353,26 +359,33 @@ straight-line pipeline. Discovery/registration runs at plugin startup (and perio
 runs once the scheduler has already bound a pod to the node.
 
 **1. Discovery & Registration** — runs at Device Plugin startup, independent of any pod:
-```mermaid!
-%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
-flowchart TD
-    A["NVIDIA Device Plugin (DaemonSet)<br/>- Discovers GPUs (nvidia-smi)<br/>- Registers with kubelet"]
-    B["kubelet (on GPU node)<br/>- Discovers device plugins<br/>- Tracks GPU allocation"]
-    C["kube-apiserver<br/>(Node status: nvidia.com/gpu: 4)"]
-    D["kube-scheduler<br/>(Finds nodes with requested GPUs)"]
-
-    A --> B --> C --> D
+```
+NVIDIA Device Plugin (DaemonSet)
+  - Discovers GPUs (nvidia-smi)
+  - Registers with kubelet
+              ↓
+kubelet (on GPU node)
+  - Discovers device plugins
+  - Tracks GPU allocation
+              ↓
+kube-apiserver (Node status: nvidia.com/gpu: 4)
+              ↓
+kube-scheduler (Finds nodes with requested GPUs)
 ```
 
 **2. Allocation** — runs per pod, only after the scheduler has bound it to this node:
-```mermaid!
-%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
-flowchart TD
-    A["kube-scheduler<br/>Binds pod to node with enough GPUs"]
-    B["kubelet (on GPU node)<br/>- Calls Allocate() for the pod"]
-    C["NVIDIA Device Plugin (DaemonSet)<br/>- Allocates specific GPUs<br/>- Returns envs/mounts/device specs<br/>&nbsp;&nbsp;(pre-CDI) or a CDI device name<br/>&nbsp;&nbsp;(CDI mode, v0.14+)"]
-
-    A --> B --> C
+```
+kube-scheduler
+  Binds pod to node with enough GPUs
+              ↓
+kubelet (on GPU node)
+  - Calls Allocate() for the pod
+              ↓
+NVIDIA Device Plugin (DaemonSet)
+  - Allocates specific GPUs
+  - Returns envs/mounts/device specs
+    (pre-CDI) or a CDI device name
+    (CDI mode, v0.14+)
 ```
 
 What the plugin returns from `Allocate()` depends on its mode. Older versions — and newer ones running with CDI
@@ -818,30 +831,47 @@ int main() {
 
 **The execution flow:**
 
-<div class="mermaid-compact">
-
-```mermaid!
-%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
-flowchart TD
-    A["Application calls: cudaGetDeviceCount(&amp;deviceCount)"]
-    B["CUDA Runtime (libcudart.so): cuDeviceGetCount()"]
-    C["CUDA Driver (libcuda.so):<br/>- Reads NVIDIA_VISIBLE_DEVICES from environment<br/>- Parses: 'GPU-uuid-1234,GPU-uuid-5678'<br/>- Returns: deviceCount = 2"]
-    D["Application prints: 'Visible GPUs: 2'"]
-    E["Application calls: cudaMalloc(&amp;d_data, 1GB) for GPU 0"]
-    F["CUDA Runtime: cuMemAlloc(1073741824) // 1 GB in bytes"]
-    G["CUDA Driver:<br/>- Determines physical GPU from NVIDIA_VISIBLE_DEVICES mapping<br/>- Virtual GPU 0 → Physical GPU-uuid-1234 → /dev/nvidia0<br/>- Opens file descriptor: fd = open('/dev/nvidia0', O_RDWR)"]
-    H["Kernel checks cgroups:<br/>- Process in cgroup: /kubepods/pod-xyz/container-abc<br/>- Requested device: major=195, minor=0<br/>- cgroups device allowlist: c 195:0 rwm ✓ ALLOWED"]
-    I["Kernel forwards to nvidia.ko driver"]
-    J["nvidia.ko driver:<br/>- Allocates 1 GB of GPU memory on physical GPU<br/>- Programs GPU memory controller<br/>- Returns device memory address: 0x7f8c40000000"]
-    K["CUDA Driver returns to application"]
-    L["Application prints: 'GPU 0: Allocated 1 GB'"]
-    M["Repeat for GPU 1 with /dev/nvidia1"]
-    N["Application prints: 'GPU 1: Allocated 1 GB'"]
-
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N
 ```
-
-</div>
+Application calls: cudaGetDeviceCount(&deviceCount)
+              ↓
+CUDA Runtime (libcudart.so): cuDeviceGetCount()
+              ↓
+CUDA Driver (libcuda.so):
+  - Reads NVIDIA_VISIBLE_DEVICES from environment
+  - Parses: 'GPU-uuid-1234,GPU-uuid-5678'
+  - Returns: deviceCount = 2
+              ↓
+Application prints: 'Visible GPUs: 2'
+              ↓
+Application calls: cudaMalloc(&d_data, 1GB) for GPU 0
+              ↓
+CUDA Runtime: cuMemAlloc(1073741824) // 1 GB in bytes
+              ↓
+CUDA Driver:
+  - Determines physical GPU from NVIDIA_VISIBLE_DEVICES mapping
+  - Virtual GPU 0 → Physical GPU-uuid-1234 → /dev/nvidia0
+  - Opens file descriptor: fd = open('/dev/nvidia0', O_RDWR)
+              ↓
+Kernel checks cgroups:
+  - Process in cgroup: /kubepods/pod-xyz/container-abc
+  - Requested device: major=195, minor=0
+  - cgroups device allowlist: c 195:0 rwm ✓ ALLOWED
+              ↓
+Kernel forwards to nvidia.ko driver
+              ↓
+nvidia.ko driver:
+  - Allocates 1 GB of GPU memory on physical GPU
+  - Programs GPU memory controller
+  - Returns device memory address: 0x7f8c40000000
+              ↓
+CUDA Driver returns to application
+              ↓
+Application prints: 'GPU 0: Allocated 1 GB'
+              ↓
+Repeat for GPU 1 with /dev/nvidia1
+              ↓
+Application prints: 'GPU 1: Allocated 1 GB'
+```
 
 **System calls involved:**
 ```bash
