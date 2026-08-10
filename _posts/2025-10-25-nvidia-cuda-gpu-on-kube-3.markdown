@@ -735,6 +735,10 @@ time for when you're standing up a MIG-enabled node:
   GPU dashboards need per-slice telemetry (the DCGM exporter plus a MIG-aware Grafana dashboard) — whole-GPU
   utilization graphs will just show the parent card and hide how the individual slices are actually being used.
 
+  > A per-slice dashboard is already covered below — see the live Hardware Health dashboard under
+  > [GPU Fleet Reliability](#gpu-fleet-reliability-metrics-and-slos) and the per-MIG-slice memory/utilization
+  > panels under [Utilization & Efficiency](#4-utilization--efficiency).
+
 [`gpu-node-debug.sh`](https://github.com/hrishin/dotfiles/blob/master/scripts/gpu-node-debug.sh) automates the
 checks behind the first two bullets above and the containerd mismatch below: it reads the `nvidia.com/mig.config`
 node label and reconciliation state directly, cross-checks the GI/CI hierarchy via `nvidia-smi mig`, and
@@ -755,16 +759,12 @@ version = 3
 
   [plugins."io.containerd.cri.v1.runtime"]
     cdi_spec_dirs = ["/etc/cdi", "/var/run/cdi"]
-    device_ownership_from_security_context = false
-    disable_apparmor = false
-    .....
+    ...
     enable_cdi = true
 
   [plugins."io.containerd.cri.v1.runtime".containerd]
       default_runtime_name = "runc"
-      ignore_blockio_not_enabled_errors = false
-      ignore_rdt_not_enabled_errors = false
-
+      ...
       [plugins."io.containerd.cri.v1.runtime".containerd.runtimes]
 
         [plugins."io.containerd.cri.v1.runtime".containerd.runtimes.nvidia]
