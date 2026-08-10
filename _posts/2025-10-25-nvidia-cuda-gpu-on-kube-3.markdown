@@ -913,17 +913,6 @@ dcgmExporter:
                                  # POWER_VIOLATION, etc.
 ```
 
-Verified by diffing the exporter's live `/metrics` output against the fields in the table above — six of them
-were silently absent under the operator's default config until the custom `dcgm-metrics.csv` was added. XID was a
-seventh, different kind of gap: it was *in* the custom CSV, but still never showed up live — it's a blank-value
-gauge that the exporter drops rather than a normal metric, so adding it to a counters CSV alone doesn't get you
-an alertable signal. `DCGM_EXP_XID_ERRORS_TOTAL` does.
-
-That produces a `nvidia-dcgm-exporter` `ServiceMonitor` scraping port `gpu-metrics` at `/metrics` — check
-`kube-prometheus-stack`'s `serviceMonitorSelectorNilUsesHelmValues` isn't scoped to a release label, or the
-ServiceMonitor gets created but never actually picked up (an easy silent gap: everything *looks* wired up, nothing
-shows up in Grafana).
-
 ![Grafana dashboard showing all six Hardware Health SLIs live: XID errors, ECC DBE/SBE trends, thermal/power
 violation time, SM occupancy via GR_ENGINE_ACTIVE, and framebuffer used vs free, all scoped to one MIG-sliced
 node](/assets/gpu-fleet-slo-dashboard-hardware-health.png)
