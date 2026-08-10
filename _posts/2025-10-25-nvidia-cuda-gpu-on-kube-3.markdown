@@ -53,7 +53,7 @@ nvidia-container-runtime-hook ← Vendor logic
 nvidia-container-cli ← Device provisioning
 ```
 
-Problem:
+**Problem:**
 
 Vendor Lock-in: AMD needed rocm-container-runtime, Intel their own
 Runtime Coupling: Required wrapping or modifying the container runtime
@@ -715,7 +715,7 @@ The GPU Operator and its MIG Manager (introduced in [Who Actually Stands MIG Up]
 do most of the day-to-day work of running MIG on a cluster, but the automation has sharp edges. Worth budgeting
 time for when you're standing up a MIG-enabled node:
 
-##### Common MIG issues
+#### Common MIG issues
 
 - **The MIG Manager treats "no label" as "no MIG."** If a node has no `nvidia.com/mig.config` label at all, the
   manager's default reconciliation target is `all-disabled` — which will tear down any instances you carved by
@@ -741,7 +741,7 @@ node label and reconciliation state directly, cross-checks the GI/CI hierarchy v
 compares kubelet's actual containerd instance against the operator's configured `CONTAINERD_SOCKET`/
 `CONTAINERD_CONFIG` — runnable remotely via `kubectl debug node`, no SSH required.
 
-##### Containerd: CDI vs `runtimeClassName` vs non-kube containerd instance
+#### Containerd: CDI vs `runtimeClassName` vs non-kube containerd instance
 
 On a cluster running the [DRA driver](#dynamic-resource-allocation-dra-next-generation-gpu-scheduling)
 rather than the classic device plugin, the containerd drop-in that the GPU Operator's toolkit generates

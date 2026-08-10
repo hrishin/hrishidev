@@ -11,8 +11,21 @@ img.mermaid {
   margin: 1.5em auto;
 }
 
-.post-content h5 { font-size: 18px; font-weight: 700; }
-@media screen and (max-width: 800px) { .post-content h5 { font-size: 17px; } }
+// h5/h6 read as quiet sub-labels (uppercase + letter-spacing) rather than
+// competing on size/weight with h2-h4 — avoids a bold child heading ever
+// outranking its non-bold parent at any viewport width.
+.post-content h5 {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #333;
+}
 
-.post-content h6 { font-size: 16px; font-weight: 700; }
-@media screen and (max-width: 800px) { .post-content h6 { font-size: 15px; } }
+.post-content h6 {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #666;
+}
