@@ -15,17 +15,17 @@ img.mermaid {
 // competing on size/weight with h2-h4 — avoids a bold child heading ever
 // outranking its non-bold parent at any viewport width.
 .post-content h5 {
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #151414;
+}
+
+.post-content h6 {
   font-size: 14px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #333;
-}
-
-.post-content h6 {
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #666;
+  color: #151414;
 }
