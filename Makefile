@@ -11,7 +11,7 @@ serve:
 		-v "$(PWD)":/srv/jekyll \
 		-p 4000:4000 -p 35729:35729 \
 		jekyll/jekyll:4.2.2 \
-		jekyll serve --host 0.0.0.0 --port 4000 --livereload
+		jekyll serve --host 0.0.0.0 --port 4000 --livereload --force_polling
 
 deploy:
 	rm -rf .jekyll-cache
