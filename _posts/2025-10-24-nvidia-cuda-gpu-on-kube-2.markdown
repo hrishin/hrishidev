@@ -276,7 +276,7 @@ $ ls -l /dev/nvidia*
   cr--r--r-- 1 root root 238, 31 Aug  9 12:06 nvidia-cap31
   cr--r--r-- 1 root root 238,  4 Aug  9 11:55 nvidia-cap4
 
-for f in /proc/driver/nvidia/capabilities/gpu0/mig/gi*/ci*/access; do
+$ for f in /proc/driver/nvidia/capabilities/gpu0/mig/gi*/ci*/access; do
   gi=$(echo "$f" | grep -oP 'gi\K[0-9]+')
   ci=$(echo "$f" | grep -oP 'ci\K[0-9]+')
   minor=$(grep DeviceFileMinor "$f" | awk '{print $2}')
