@@ -2,7 +2,7 @@
 layout: post
 title:  "GPU from Silicon to Container, Part 2: GPU Sharing Strategies in Kubernetes"
 date:   2025-10-24 06:10:10 +0000
-categories: [CUDA, GPU, NVidia]
+categories: [CUDA, GPU, NVIDIA]
 ---
 
 *Part 2 of a 3-part series on how Kubernetes makes GPUs accessible to containers — this part covers splitting a

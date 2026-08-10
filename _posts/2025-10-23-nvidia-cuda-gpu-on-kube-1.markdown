@@ -2,7 +2,7 @@
 layout: post
 title:  "GPU from Silicon to Container, Part 1: GPU Provisioning in Kubernetes"
 date:   2025-10-23 06:10:10 +0000
-categories: [CUDA, GPU, NVidia]
+categories: [CUDA, GPU, NVIDIA]
 redirect_from:
   - /cuda,/gpu,/nvidia/2025/10/23/nvidia-cuda-gpu-on-kube.html
   - /cuda/gpu/nvidia/2025/10/23/nvidia-cuda-gpu-on-kube.html

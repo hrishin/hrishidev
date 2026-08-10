@@ -2,7 +2,7 @@
 layout: post
 title:  "GPU from Silicon to Container, Part 3: CDI, Dynamic Resource Allocation & Operating GPUs in Kubernetes"
 date:   2025-10-25 06:10:10 +0000
-categories: [CUDA, GPU, NVidia]
+categories: [CUDA, GPU, NVIDIA]
 ---
 
 *Part 3 of a 3-part series on how Kubernetes makes GPUs accessible to containers — the final part covers the
