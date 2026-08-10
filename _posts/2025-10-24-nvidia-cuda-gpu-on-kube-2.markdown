@@ -6,13 +6,13 @@ categories: [CUDA, GPU, NVidia]
 ---
 
 *Part 2 of a 3-part series on how Kubernetes makes GPUs accessible to containers — this part covers splitting a
-single physical GPU across multiple workloads. Start with [Part 1](https://hrishi.dev/cuda/gpu/nvidia/2025/10/23/nvidia-cuda-gpu-on-kube.html) if you haven't yet.*
+single physical GPU across multiple workloads. Start with [Part 1](https://hrishi.dev/cuda/gpu/nvidia/2025/10/23/nvidia-cuda-gpu-on-kube-1.html) if you haven't yet.*
 
 ---
 
 ## Introduction
 
-In **[Part 1](https://hrishi.dev/cuda/gpu/nvidia/2025/10/23/nvidia-cuda-gpu-on-kube.html)** we traced a GPU from silicon to a scheduled pod via the device-plugin path — each pod
+In **[Part 1](https://hrishi.dev/cuda/gpu/nvidia/2025/10/23/nvidia-cuda-gpu-on-kube-1.html)** we traced a GPU from silicon to a scheduled pod via the device-plugin path — each pod
 getting exclusive use of a whole GPU. Default Kubernetes scheduling assigns GPUs as atomic units, and most
 workloads don't come close to using a whole card. This part covers the options for splitting one: time-slicing,
 MPS, MIG, HAMi, and vGPU, and what each trades away to do it.
@@ -27,14 +27,10 @@ MPS, MIG, HAMi, and vGPU, and what each trades away to do it.
 
 ## GPU Device Sharing
 
-Default Kubernetes scheduling assigns GPUs as atomic units ([nvidia.com/gpu](https://nvidia.com/gpu): 1). 
-When a lightweight container requests a GPU, it monopolizes the entire device regardless of actual compute or memory utilization. 
-A typical inference service often uses only fraction of GPU's compute and a small slice of its VRAM, leaving the
-rest idle — the gap this section is really about closing. Effective GPU's utilization is quite core of
-operating fleet of GPUS for Inferencing, Serving, Traiing or HPC use cases.
-
-The isolation and multiplexing options — MIG, time-slicing, MPS, HAMi, and vGPU — that let multiple workloads split a
-physical GPU, and what each one trades away to do it.
+When a lightweight container requests a GPU, it monopolizes the entire device regardless of actual compute or
+memory utilization. A typical inference service uses only a fraction of a GPU's compute and a slice of its
+VRAM, leaving the rest idle — the gap this section closes. Effective GPU utilization is core to operating a
+fleet of GPUs for inference, serving, training, or HPC workloads.
 
 ### GPU Sharing Options
 
@@ -132,7 +128,7 @@ than treating MPS as strictly better or worse.
 This isn't a scheduler trick — the GPU's memory controllers and streaming multiprocessors
 (SMs) are physically fenced off per instance, so one tenant's workload literally cannot see or starve another's.
 
-MIG requires certain generation silicon or newer — **A100 was the first GPU to support it**, and it carries forward
+MIG requires certain [generation silicon](https://docs.nvidia.com/datacenter/tesla/mig-user-guide/supported-mig-profiles.html) or newer — **A100 was the first GPU to support it**, and it carries forward
 on A30, H100, H200, and Blackwell-class data-center cards.
 
 ##### MIG Architecture
@@ -391,22 +387,19 @@ compute *per pod*, changeable purely through the pod spec.
 
 ##### How the sharing model actually works
 
-Where the device plugin flow in [Kubernetes GPU Scheduling](https://hrishi.dev/cuda/gpu/nvidia/2025/10/23/nvidia-cuda-gpu-on-kube.html#kubernetes-gpu-scheduling) (Part 1) only ever hands out whole GPU UUIDs,
+Where the device plugin flow in [Kubernetes GPU Scheduling](https://hrishi.dev/cuda/gpu/nvidia/2025/10/23/nvidia-cuda-gpu-on-kube-1.html#kubernetes-gpu-scheduling) (Part 1) only ever hands out whole GPU UUIDs,
 HAMi inserts itself at four points in that flow:
 
-```
-Pod requests nvidia.com/gpu + gpumem + gpucores
-         ↓
-Mutating webhook reroutes the pod to the HAMi scheduler extender
-         ↓
-HAMi scheduler checks aggregate count / memory / compute budgets
-across the cluster before binding (not just device count)
-         ↓
-HAMi device plugin allocates a logical slot and injects libvgpu.so
-into the container via LD_PRELOAD
-         ↓
-libvgpu.so intercepts CUDA memory-allocation and kernel-launch calls
-at runtime, enforcing the pod's memory ceiling and compute-time share
+```mermaid!
+%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
+flowchart TD
+    A["Pod requests nvidia.com/gpu + gpumem + gpucores"]
+    B["Mutating webhook reroutes the pod to the HAMi scheduler extender"]
+    C["HAMi scheduler checks aggregate count / memory / compute budgets<br/>across the cluster before binding (not just device count)"]
+    D["HAMi device plugin allocates a logical slot and injects libvgpu.so<br/>into the container via LD_PRELOAD"]
+    E["libvgpu.so intercepts CUDA memory-allocation and kernel-launch calls<br/>at runtime, enforcing the pod's memory ceiling and compute-time share"]
+
+    A --> B --> C --> D --> E
 ```
 
 The pod spec gains two extended resources beyond the familiar `nvidia.com/gpu` count:
@@ -469,7 +462,7 @@ Hypervisor (VMware vSphere / KVM)
 Each vGPU appears as a complete GPU to the guest OS, enabling standard CUDA applications without modification.
 Can use the [Kata containers to enable vGPU](https://github.com/kata-containers/kata-containers/blob/main/docs/use-cases/NVIDIA-GPU-passthrough-and-Kata.md) on the Kubernetes.
 
-`Note: In order to use vGPU, vGPU may requires NVIDIA vGPU license`
+**Note:** vGPU may require an NVIDIA vGPU license.
 
 #### Comparison Matrix
 
@@ -477,7 +470,7 @@ Can use the [Kata containers to enable vGPU](https://github.com/kata-containers/
 |-----------|-----------|---------|-------------|-------------|----------|
 | **Full GPU** | Hardware | Dedicated | 100% | Low | Training, HPC |
 | **Time-Slicing** | None | Shared | Variable | High | Dev/Test, Jupyter notebooks |
-| **MIG** | Hardware | Dedicated | Guaranteed | Medium | Inference, Multi-tenant |
+| **MIG** | Hardware | Dedicated | Guaranteed | Medium | Inference, Multi-tenant inferencing, training |
 | **MPS** | None (shared context) | Shared | Concurrent, no throttling | Medium | Many small/cooperative processes |
 | **HAMi** | Software (userspace intercept) | Metered, not walled off | Throttled share | High | Dev/Test, small inference, CI |
 | **vGPU** | Software | Isolated | Good | High | VDI, Cloud VMs |
@@ -486,7 +479,9 @@ Can use the [Kata containers to enable vGPU](https://github.com/kata-containers/
 
 ## Up Next
 
-Time-slicing, MPS, MIG, HAMi, and vGPU all get a GPU shared today — but none of them are the direction Kubernetes
-GPU scheduling itself is evolving toward. **[Part 3 — CDI, DRA & Operations](https://hrishi.dev/cuda/gpu/nvidia/2025/10/25/nvidia-cuda-gpu-on-kube-3.html)** covers the Container
-Device Interface that's replacing vendor-specific runtime hooks, Dynamic Resource Allocation as the
-next-generation scheduler, and what it takes to run all of this reliably in production.
+Time-slicing, MPS, MIG, HAMi, and vGPU all get a GPU shared today, but they sit on top of the device-plugin
+model covered in Part 1. Kubernetes scheduling itself is moving to a different foundation — MIG allocation becomes
+first-class there, exposed as its own `DeviceClass` rather than a device-plugin resource name.
+**[Part 3 — CDI, DRA & Operations](https://hrishi.dev/cuda/gpu/nvidia/2025/10/25/nvidia-cuda-gpu-on-kube-3.html)**
+covers the Container Device Interface that's replacing vendor-specific runtime hooks, Dynamic Resource Allocation
+as that next-generation scheduler, and what it takes to run all of this reliably in production.

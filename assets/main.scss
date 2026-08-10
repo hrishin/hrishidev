@@ -1,0 +1,16 @@
+---
+---
+
+@import "minima";
+
+img.mermaid {
+  display: block;
+  max-width: 550px;
+  width: 100%;
+  height: auto;
+  margin: 1.5em auto;
+}
+
+.mermaid-compact img.mermaid {
+  max-width: 380px;
+}

@@ -22,8 +22,10 @@ This is a 3-part series tracing that full path, mirroring how GPUs actually get 
 
 - **Part 1 (this post) — Provisioning** — from the PCIe device and kernel driver, through the NVIDIA Container
   Toolkit and CUDA stack, to how Kubernetes discovers, schedules, and allocates GPUs to pods.
+
 - **[Part 2 — Sharing](https://hrishi.dev/cuda/gpu/nvidia/2025/10/24/nvidia-cuda-gpu-on-kube-2.html)** — the isolation and multiplexing options — MIG, time-slicing, MPS, HAMi, and
   vGPU — that let multiple workloads split a physical GPU, and what each one trades away to do it.
+
 - **[Part 3 — CDI, DRA & Operations](https://hrishi.dev/cuda/gpu/nvidia/2025/10/25/nvidia-cuda-gpu-on-kube-3.html)** — the Container Device Interface (CDI) replacing
   vendor-specific runtime hooks, Dynamic Resource Allocation (DRA) as the next generation of GPU scheduling, and
   what it takes to run GPUs reliably at scale.
@@ -117,6 +119,7 @@ nvidia-drm.ko          # Direct Rendering Manager
 ```
 
 `modinfo` confirms what's actually loaded and, via its `alias` field, previews the major number claimed for the device files below:
+
 ```bash
 # modinfo nvidia
 filename:       /lib/modules/6.11.0-1016-nvidia/updates/dkms/nvidia.ko.zst
@@ -178,28 +181,15 @@ Containers use Linux namespaces to create isolated environments. By default, a c
 The **NVIDIA Container Toolkit** (formerly nvidia-docker2) solves this problem by modifying the container creation process.
 
 ##### Component Architecture
-```
-┌─────────────────────────────────────────┐
-│   Container Runtime (Docker/containerd) │
-└──────────────┬──────────────────────────┘
-               │
-               ↓
-┌──────────────────────────────────────────┐
-│   nvidia-container-runtime               │
-│   (OCI-compliant runtime wrapper)        │
-└──────────────┬───────────────────────────┘
-               │
-               ↓
-┌──────────────────────────────────────────┐
-│   nvidia-container-runtime-hook          │
-│   (Prestart hook)                        │
-└──────────────┬───────────────────────────┘
-               │
-               ↓
-┌──────────────────────────────────────────┐
-│   nvidia-container-cli                   │
-│   (Performs actual GPU provisioning)     │
-└──────────────────────────────────────────┘
+```mermaid!
+%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
+flowchart TD
+    A["Container Runtime<br/>(Docker/containerd)"]
+    B["nvidia-container-runtime<br/>(OCI-compliant runtime wrapper)"]
+    C["nvidia-container-runtime-hook<br/>(Prestart hook)"]
+    D["nvidia-container-cli<br/>(Performs actual GPU provisioning)"]
+
+    A --> B --> C --> D
 ```
 
 ##### What Gets Mounted Into the Container
@@ -255,64 +245,39 @@ The format `c 195:* rwm` means:
 
 CUDA applications communicate with GPUs through a layered software stack:
 
-```
-┌──────────────────────────────┐
-│   Your CUDA Application      │
-│   (compiled with nvcc)       │
-└─────────────┬────────────────┘
-              │
-              ↓
-┌──────────────────────────────┐
-│   CUDA Runtime API           │
-│   (libcudart.so)             │
-│   - cudaMalloc()             │
-│   - cudaMemcpy()             │
-│   - kernel<<<>>>()           │
-└─────────────┬────────────────┘
-              │
-              ↓
-┌──────────────────────────────┐
-│   CUDA Driver API            │
-│   (libcuda.so)               │
-│   - cuMemAlloc()             │
-│   - cuLaunchKernel()         │
-└─────────────┬────────────────┘
-              │
-              ↓
-┌──────────────────────────────┐
-│   Kernel Driver              │
-│   (nvidia.ko)                │
-└─────────────┬────────────────┘
-              │
-              ↓
-┌──────────────────────────────┐
-│   Physical GPU Hardware      │
-└──────────────────────────────┘
+```mermaid!
+%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
+flowchart TD
+    A["Your CUDA Application<br/>(compiled with nvcc)"]
+    B["CUDA Runtime API<br/>(libcudart.so)<br/>- cudaMalloc()<br/>- cudaMemcpy()<br/>- kernel&lt;&lt;&lt;&gt;&gt;&gt;()"]
+    C["CUDA Driver API<br/>(libcuda.so)<br/>- cuMemAlloc()<br/>- cuLaunchKernel()"]
+    D["Kernel Driver<br/>(nvidia.ko)"]
+    E["Physical GPU Hardware"]
+
+    A --> B --> C --> D --> E
 ```
 
 #### CUDA in a Containerized Environment
 
-When user run a CUDA application inside a container, the call stack looks like:
+When a user runs a CUDA application inside a container, the call stack looks like:
 
-```
-[Container] CUDA Application
-                ↓
-[Container] libcudart.so (CUDA Runtime)
-                ↓
-[Mounted from Host] libcuda.so (CUDA Driver Library)
-                ↓
-[ioctl() system calls]
-                ↓
-[Mounted Device] /dev/nvidia0
-                ↓
-[Host Kernel] nvidia.ko driver
-                ↓
-[Physical Hardware] GPU
+```mermaid!
+%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
+flowchart TD
+    A["[Container] CUDA Application"]
+    B["[Container] libcudart.so (CUDA Runtime)"]
+    C["[Mounted from Host] libcuda.so (CUDA Driver Library)"]
+    D["[ioctl() system calls]"]
+    E["[Mounted Device] /dev/nvidia0"]
+    F["[Host Kernel] nvidia.ko driver"]
+    G["[Physical Hardware] GPU"]
+
+    A --> B --> C --> D --> E --> F --> G
 ```
 
 ##### The Critical Driver Compatibility Requirement
 
-**Key Point**: The `libcuda.so` driver library version must match the host kernel driver version. That is why its preferred 
+**Key Point**: The `libcuda.so` driver library version must match the host kernel driver version. That's why it's preferred
 to mount the driver library from the host rather than packaging it in the container image.
 
 Example compatibility matrix:
@@ -388,54 +353,26 @@ straight-line pipeline. Discovery/registration runs at plugin startup (and perio
 runs once the scheduler has already bound a pod to the node.
 
 **1. Discovery & Registration** — runs at Device Plugin startup, independent of any pod:
-```
-┌────────────────────────────────────────┐
-│   NVIDIA Device Plugin (DaemonSet)     │
-│   - Discovers GPUs (nvidia-smi)        │
-│   - Registers with kubelet             │
-└───────────────┬────────────────────────┘
-                │
-                ↓
-┌────────────────────────────────────────┐
-│   kubelet (on GPU node)                │
-│   - Discovers device plugins           │
-│   - Tracks GPU allocation              │
-└───────────────┬────────────────────────┘
-                │
-                ↓
-┌────────────────────────────────────────┐
-│   kube-apiserver                       │
-│   (Node status: nvidia.com/gpu: 4)     │
-└───────────────┬────────────────────────┘
-                │
-                ↓
-┌────────────────────────────────────────┐
-│   kube-scheduler                       │
-│   (Finds nodes with requested GPUs)    │
-└────────────────────────────────────────┘
+```mermaid!
+%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
+flowchart TD
+    A["NVIDIA Device Plugin (DaemonSet)<br/>- Discovers GPUs (nvidia-smi)<br/>- Registers with kubelet"]
+    B["kubelet (on GPU node)<br/>- Discovers device plugins<br/>- Tracks GPU allocation"]
+    C["kube-apiserver<br/>(Node status: nvidia.com/gpu: 4)"]
+    D["kube-scheduler<br/>(Finds nodes with requested GPUs)"]
+
+    A --> B --> C --> D
 ```
 
 **2. Allocation** — runs per pod, only after the scheduler has bound it to this node:
-```
-┌────────────────────────────────────────┐
-│   kube-scheduler                       │
-│   Binds pod to node with enough GPUs   │
-└───────────────┬────────────────────────┘
-                │
-                ↓
-┌────────────────────────────────────────┐
-│   kubelet (on GPU node)                │
-│   - Calls Allocate() for the pod       │
-└───────────────┬────────────────────────┘
-                │
-                ↓
-┌────────────────────────────────────────┐
-│   NVIDIA Device Plugin (DaemonSet)     │
-│   - Allocates specific GPUs            │
-│   - Returns envs/mounts/device specs   │
-│     (pre-CDI) or a CDI device name     │
-│     (CDI mode, v0.14+)                 │
-└────────────────────────────────────────┘
+```mermaid!
+%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
+flowchart TD
+    A["kube-scheduler<br/>Binds pod to node with enough GPUs"]
+    B["kubelet (on GPU node)<br/>- Calls Allocate() for the pod"]
+    C["NVIDIA Device Plugin (DaemonSet)<br/>- Allocates specific GPUs<br/>- Returns envs/mounts/device specs<br/>&nbsp;&nbsp;(pre-CDI) or a CDI device name<br/>&nbsp;&nbsp;(CDI mode, v0.14+)"]
+
+    A --> B --> C
 ```
 
 What the plugin returns from `Allocate()` depends on its mode. Older versions — and newer ones running with CDI
@@ -522,6 +459,7 @@ kind: Pod
 metadata:
   name: gpu-pod
 spec:
+  runtimeClassName: nvidia   # see "Wiring the Hook" below for where this comes from
   containers:
   - name: cuda-container
     image: nvidia/cuda:11.8.0-base-ubuntu22.04
@@ -629,6 +567,91 @@ spec directly and applies its `containerEdits` (device nodes, mounts, env, hooks
 runs. See ["Post-CDI Device Plugin"](https://hrishi.dev/cuda/gpu/nvidia/2025/10/25/nvidia-cuda-gpu-on-kube-3.html#post-cdi-device-plugin) in Part 3 for the full Allocate() implementation
 and containerd integration flow.
 
+
+##### Wiring the Hook: containerd Runtime Configuration
+
+The chain above doesn't run for every container by default — containerd has to be told that a runtime called
+`nvidia` exists and which binary implements it, and a pod has to explicitly ask for that runtime by name. The
+NVIDIA GPU Operator's toolkit component writes this as a drop-in config on every GPU node:
+
+```toml
+version = 3
+
+[plugins]
+
+  [plugins."io.containerd.cri.v1.runtime"]
+    ...
+
+  [plugins."io.containerd.cri.v1.runtime".containerd]
+      default_runtime_name = "runc"
+      ignore_blockio_not_enabled_errors = false
+      ignore_rdt_not_enabled_errors = false
+
+      [plugins."io.containerd.cri.v1.runtime".containerd.runtimes]
+
+        [plugins."io.containerd.cri.v1.runtime".containerd.runtimes.nvidia]
+          ...
+          [plugins."io.containerd.cri.v1.runtime".containerd.runtimes.nvidia.options]
+            BinaryName = "/usr/local/nvidia/toolkit/nvidia-container-runtime"
+            ...
+```
+
+Two things worth noticing:
+
+- **`default_runtime_name = "runc"`** — plain `runc` handles every container unless a pod opts out of it. The
+  hook-based flow above is additive, not a replacement for the default path.
+- **Two separate `nvidia` runtimes are registered**, pointing at two different binaries: `nvidia` runs the classic
+  `nvidia-container-runtime` → `nvidia-container-runtime-hook` → `nvidia-container-cli` chain from the diagram
+  above; `nvidia-cdi` skips the hook entirely and resolves devices from a CDI spec instead (the mechanism CDI and
+  DRA build on — see [Part 3](https://hrishi.dev/cuda/gpu/nvidia/2025/10/25/nvidia-cuda-gpu-on-kube-3.html#the-container-device-interface-cdi-revolution)).
+
+Registering the runtime in containerd only makes it available — a pod still has to ask for it. Kubernetes exposes
+that as a `RuntimeClass` object, which the GPU Operator also creates, mapping the cluster-facing name to the
+containerd runtime handler configured above:
+
+```yaml
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: nvidia
+handler: nvidia   # must match a [...containerd.runtimes.<handler>] block in the containerd config
+```
+
+A pod then opts into the hook-based path by name, via `runtimeClassName`:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pytorch-training
+  labels:
+    app: pytorch-training
+spec:
+  selector:
+    matchLabels:
+      app: pytorch-training
+  template:
+    metadata:
+      labels:
+        app: pytorch-training
+    spec:
+      runtimeClassName: nvidia
+      containers:
+      - name: pytorch
+        image: intel/deep-learning:pytorch-gpu-2025.2.0-py3.11
+        args:
+          - python
+          - train.py
+          - --model=resnet18
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+```
+
+Without `runtimeClassName: nvidia`, this pod would run under plain `runc` and get no GPU access at all from
+containerd's side — everything from the mounted devices to `libcuda.so` shown below depends on the hook actually
+running, which only happens when the pod names the runtime that triggers it.
+
 ---
 
 ### GPU Isolation & Visibility
@@ -685,6 +708,7 @@ The CUDA driver:
 1. Reads `NVIDIA_VISIBLE_DEVICES` environment variable
 2. Creates a virtual-to-physical GPU mapping
 3. Only allows access to visible devices
+
 ```c
 cuInit() {
     visible_devices = getenv("NVIDIA_VISIBLE_DEVICES");
@@ -793,47 +817,31 @@ int main() {
 ```
 
 **The execution flow:**
+
+<div class="mermaid-compact">
+
+```mermaid!
+%%{init: {'theme': 'default', 'themeVariables': {'fontSize': '9px'}, 'flowchart': {'nodeSpacing': 25, 'rankSpacing': 25, 'padding': 8}}}%%
+flowchart TD
+    A["Application calls: cudaGetDeviceCount(&amp;deviceCount)"]
+    B["CUDA Runtime (libcudart.so): cuDeviceGetCount()"]
+    C["CUDA Driver (libcuda.so):<br/>- Reads NVIDIA_VISIBLE_DEVICES from environment<br/>- Parses: 'GPU-uuid-1234,GPU-uuid-5678'<br/>- Returns: deviceCount = 2"]
+    D["Application prints: 'Visible GPUs: 2'"]
+    E["Application calls: cudaMalloc(&amp;d_data, 1GB) for GPU 0"]
+    F["CUDA Runtime: cuMemAlloc(1073741824) // 1 GB in bytes"]
+    G["CUDA Driver:<br/>- Determines physical GPU from NVIDIA_VISIBLE_DEVICES mapping<br/>- Virtual GPU 0 → Physical GPU-uuid-1234 → /dev/nvidia0<br/>- Opens file descriptor: fd = open('/dev/nvidia0', O_RDWR)"]
+    H["Kernel checks cgroups:<br/>- Process in cgroup: /kubepods/pod-xyz/container-abc<br/>- Requested device: major=195, minor=0<br/>- cgroups device allowlist: c 195:0 rwm ✓ ALLOWED"]
+    I["Kernel forwards to nvidia.ko driver"]
+    J["nvidia.ko driver:<br/>- Allocates 1 GB of GPU memory on physical GPU<br/>- Programs GPU memory controller<br/>- Returns device memory address: 0x7f8c40000000"]
+    K["CUDA Driver returns to application"]
+    L["Application prints: 'GPU 0: Allocated 1 GB'"]
+    M["Repeat for GPU 1 with /dev/nvidia1"]
+    N["Application prints: 'GPU 1: Allocated 1 GB'"]
+
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L --> M --> N
 ```
-Application calls: cudaGetDeviceCount(&deviceCount)
-         ↓
-CUDA Runtime (libcudart.so): cuDeviceGetCount()
-         ↓
-CUDA Driver (libcuda.so):
-  - Reads NVIDIA_VISIBLE_DEVICES from environment
-  - Parses: "GPU-uuid-1234,GPU-uuid-5678"
-  - Returns: deviceCount = 2
-         ↓
-Application prints: "Visible GPUs: 2"
-         ↓
-Application calls: cudaMalloc(&d_data, 1GB) for GPU 0
-         ↓
-CUDA Runtime: cuMemAlloc(1073741824)  // 1 GB in bytes
-         ↓
-CUDA Driver:
-  - Determines physical GPU from NVIDIA_VISIBLE_DEVICES mapping
-  - Virtual GPU 0 → Physical GPU-uuid-1234 → /dev/nvidia0
-  - Opens file descriptor: fd = open("/dev/nvidia0", O_RDWR)
-         ↓
-Kernel checks cgroups:
-  - Process in cgroup: /kubepods/pod-xyz/container-abc
-  - Requested device: major=195, minor=0
-  - cgroups device allowlist: c 195:0 rwm ✓ ALLOWED
-         ↓
-Kernel forwards to nvidia.ko driver
-         ↓
-nvidia.ko driver:
-  - Allocates 1 GB of GPU memory on physical GPU
-  - Programs GPU memory controller
-  - Returns device memory address: 0x7f8c40000000
-         ↓
-CUDA Driver returns to application
-         ↓
-Application prints: "GPU 0: Allocated 1 GB"
-         ↓
-[Repeat for GPU 1 with /dev/nvidia1]
-         ↓
-Application prints: "GPU 1: Allocated 1 GB"
-```
+
+</div>
 
 **System calls involved:**
 ```bash
