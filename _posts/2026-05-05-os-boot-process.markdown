@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "From Power Button to Shell Prompt: The Complete Journey of the OS Boot Process"
+title:  "From Power Button to Shell Prompt: The Complete Journey of the Linux OS Boot Process"
 date:   2026-05-05 06:00:00 +0000
 categories: [Linux, OS, Systems]
 redirect_from:
