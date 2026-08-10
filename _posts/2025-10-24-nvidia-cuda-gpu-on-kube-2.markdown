@@ -34,7 +34,7 @@ fleet of GPUs for inference, serving, training, or HPC workloads.
 
 ### GPU Sharing Options
 
-#### GPU Time-Slicing
+#### 1. GPU Time-Slicing
 For workloads that don't require full GPU utilization, time-slicing allows multiple containers to share a single GPU.
 
 ##### Device Plugin ConfigMap
@@ -90,7 +90,7 @@ nvidia-smi -i 0 -c PROHIBITED         # no compute processes allowed
 - **No isolation:** no memory or QoS boundaries, so compute-heavy pods can starve neighbors.
 - **Cascading OOM:** one pod's leak crashes whichever pod happens to allocate next — not necessarily the culprit.
 
-#### NVIDIA MPS (Multi-Process Service)
+#### 2. NVIDIA MPS (Multi-Process Service)
 
 Time-slicing gives each process the whole GPU in turn; MPS instead lets multiple processes run *on* the GPU
 concurrently, through a shared context. A daemon (`nvidia-cuda-mps-control`) sits between the processes and the
@@ -123,7 +123,7 @@ execution rather than turn-taking — HAMi's `libvgpu.so` approach (below) targe
 starved" niche with per-pod metering instead of a shared context, which is why the two are worth comparing rather
 than treating MPS as strictly better or worse.
 
-#### Multi-Instance GPU (MIG)
+#### 3. Multi-Instance GPU (MIG)
 
 This isn't a scheduler trick — the GPU's memory controllers and streaming multiprocessors
 (SMs) are physically fenced off per instance, so one tenant's workload literally cannot see or starve another's.
@@ -376,7 +376,7 @@ Standing up a MIG-enabled node this way has its own set of sharp edges — see
 [GPU Operator Troubleshooting](https://hrishi.dev/cuda/gpu/nvidia/2025/10/25/nvidia-cuda-gpu-on-kube-3.html#gpu-operator-troubleshooting) in Part 3's Operations section for the failure modes worth
 budgeting time for.
 
-#### HAMi: Fractional GPUs Without Repartitioning Hardware
+#### 4. HAMi: Fractional GPUs Without Repartitioning Hardware
 
 MIG solves fragmentation by cutting the GPU into fixed, hardware-defined shapes. That's great for predictable
 multi-tenant inference, but it has a rigidity problem: a `1g.24gb` slice is a `1g.24gb` slice, and reshaping the
@@ -447,7 +447,7 @@ HAMi is the better fit when workloads are numerous, small, and variable in size 
 services, CI GPU jobs — where carving fixed MIG profiles would waste capacity or require constant reshaping. MIG
 remains the better fit once isolation has to survive a hostile or untrusted tenant, not just a well-behaved one.
 
-#### vGPU (Virtual GPU)
+#### 5. vGPU (Virtual GPU)
 
 NVIDIA vGPU technology provides software-defined GPU sharing with:
 - Hypervisor-level virtualization
