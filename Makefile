@@ -1,4 +1,6 @@
-.PHONY: build run serve
+IMAGE := hrishidev-jekyll:4.1.1
+
+.PHONY: build run image serve
 
 build:
 	bundle install
@@ -6,12 +8,15 @@ build:
 run: build
 	bundle exec jekyll serve
 
-serve:
+image:
+	podman build -t $(IMAGE) .
+
+serve: image
 	podman run --rm -it \
-		-v "$(PWD)":/srv/jekyll \
+		-v "$(PWD)":/srv/jekyll:Z \
 		-p 4000:4000 -p 35729:35729 \
-		jekyll/jekyll:4.2.2 \
-		jekyll serve --host 0.0.0.0 --port 4000 --livereload --force_polling
+		$(IMAGE) \
+		bundle _2.1.4_ exec jekyll serve --host 0.0.0.0 --port 4000 --livereload --force_polling
 
 deploy:
 	rm -rf .jekyll-cache

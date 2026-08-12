@@ -1,0 +1,88 @@
+<svg
+  width="1200"
+  height="630"
+  viewBox="0 0 1200 630"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-labelledby="gpu3-diagram-title gpu3-diagram-desc"
+  font-family="'Helvetica Neue', Arial, sans-serif"
+>
+  <title id="gpu3-diagram-title">How CDI and Dynamic Resource Allocation deliver a GPU to a pod</title>
+  <desc id="gpu3-diagram-desc">
+    A five-stage pipeline: Device driver, CDI specification, ResourceSlice advertisement,
+    ResourceClaim request, and a running pod with the device injected.
+  </desc>
+
+  <rect x="0" y="0" width="1200" height="630" fill="#f8fafc" />
+
+  <text x="60" y="72" font-size="30" font-weight="700" fill="#0f172a">
+    GPU from Silicon to Container
+  </text>
+  <text x="60" y="104" font-size="18" fill="#475569">
+    Part 3: CDI and Dynamic Resource Allocation in production
+  </text>
+
+  <g font-size="14" font-weight="600">
+    <!-- 1 Driver -->
+    <rect x="40" y="180" width="200" height="220" rx="14" fill="#fff7ed" stroke="#f97316" stroke-width="2" />
+    <circle cx="66" cy="208" r="15" fill="#f97316" />
+    <text x="66" y="213" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="86" y="213" fill="#0f172a" font-size="14">Driver</text>
+    <text x="58" y="245" font-size="12.5" font-weight="400" fill="#475569">NVIDIA driver enumerates</text>
+    <text x="58" y="263" font-size="12.5" font-weight="400" fill="#475569">devices on the node</text>
+    <text x="58" y="295" font-size="11.5" font-weight="400" fill="#94a3b8">Node-local discovery</text>
+
+    <path d="M 240 290 L 266 290" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow3)" />
+
+    <!-- 2 CDI Spec -->
+    <rect x="270" y="180" width="200" height="220" rx="14" fill="#f0f9ff" stroke="#38bdf8" stroke-width="2" />
+    <circle cx="296" cy="208" r="15" fill="#38bdf8" />
+    <text x="296" y="213" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="316" y="213" fill="#0f172a" font-size="14">CDI Spec</text>
+    <text x="288" y="245" font-size="12.5" font-weight="400" fill="#475569">Declarative YAML/JSON</text>
+    <text x="288" y="263" font-size="12.5" font-weight="400" fill="#475569">describing device edits</text>
+    <text x="288" y="295" font-size="11.5" font-weight="400" fill="#94a3b8">No vendor runtime wrapper</text>
+
+    <path d="M 470 290 L 496 290" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow3)" />
+
+    <!-- 3 ResourceSlice -->
+    <rect x="500" y="180" width="200" height="220" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2" />
+    <circle cx="526" cy="208" r="15" fill="#a78bfa" />
+    <text x="526" y="213" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="546" y="213" fill="#0f172a" font-size="14">ResourceSlice</text>
+    <text x="518" y="245" font-size="12.5" font-weight="400" fill="#475569">DRA driver advertises</text>
+    <text x="518" y="263" font-size="12.5" font-weight="400" fill="#475569">available devices</text>
+    <text x="518" y="295" font-size="11.5" font-weight="400" fill="#94a3b8">Cluster-visible inventory</text>
+
+    <path d="M 700 290 L 726 290" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow3)" />
+
+    <!-- 4 ResourceClaim -->
+    <rect x="730" y="180" width="200" height="220" rx="14" fill="#f0fdf4" stroke="#22c55e" stroke-width="2" />
+    <circle cx="756" cy="208" r="15" fill="#22c55e" />
+    <text x="756" y="213" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">4</text>
+    <text x="776" y="213" fill="#0f172a" font-size="14">ResourceClaim</text>
+    <text x="748" y="245" font-size="12.5" font-weight="400" fill="#475569">Pod requests a device</text>
+    <text x="748" y="263" font-size="12.5" font-weight="400" fill="#475569">by class and constraints</text>
+    <text x="748" y="295" font-size="11.5" font-weight="400" fill="#94a3b8">Scheduler-aware matching</text>
+
+    <path d="M 930 290 L 956 290" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow3)" />
+
+    <!-- 5 Pod Running -->
+    <rect x="960" y="180" width="200" height="220" rx="14" fill="#fff7ed" stroke="#f97316" stroke-width="2" />
+    <circle cx="986" cy="208" r="15" fill="#f97316" />
+    <text x="986" y="213" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">5</text>
+    <text x="1006" y="213" fill="#0f172a" font-size="14">Pod Running</text>
+    <text x="978" y="245" font-size="12.5" font-weight="400" fill="#475569">Runtime applies the CDI</text>
+    <text x="978" y="263" font-size="12.5" font-weight="400" fill="#475569">edits to the OCI spec</text>
+    <text x="978" y="295" font-size="11.5" font-weight="400" fill="#94a3b8">Device injected at start</text>
+  </g>
+
+  <text x="60" y="580" font-size="13" fill="#94a3b8">hrishi.dev</text>
+  <text x="1140" y="580" font-size="13" fill="#94a3b8" text-anchor="end">Driver &#8594; CDI Spec &#8594; ResourceSlice &#8594; ResourceClaim &#8594; Pod</text>
+
+  <defs>
+    <marker id="arrow3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" />
+    </marker>
+  </defs>
+</svg>

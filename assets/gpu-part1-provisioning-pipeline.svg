@@ -1,0 +1,98 @@
+<svg
+  width="1200"
+  height="630"
+  viewBox="0 0 1200 630"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-labelledby="gpu1-diagram-title gpu1-diagram-desc"
+  font-family="'Helvetica Neue', Arial, sans-serif"
+>
+  <title id="gpu1-diagram-title">GPU provisioning path from hardware to a scheduled Kubernetes pod</title>
+  <desc id="gpu1-diagram-desc">
+    A five-stage pipeline: Hardware and Kernel Driver, Container Runtime, CUDA in Container,
+    Kubernetes Device Plugin Scheduling, and Pod Running with GPU access.
+  </desc>
+
+  <rect x="0" y="0" width="1200" height="630" fill="#f8fafc" />
+
+  <text x="60" y="72" font-size="30" font-weight="700" fill="#0f172a">
+    GPU from Silicon to Container
+  </text>
+  <text x="60" y="104" font-size="18" fill="#475569">
+    Part 1: how a GPU becomes visible inside a scheduled pod
+  </text>
+
+  <g font-size="14" font-weight="600">
+    <!-- Stage 1 -->
+    <rect x="40" y="180" width="200" height="220" rx="14" fill="#fff7ed" stroke="#f97316" stroke-width="2" />
+    <circle cx="66" cy="208" r="15" fill="#f97316" />
+    <text x="66" y="213" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="86" y="213" fill="#0f172a" font-size="14">Hardware</text>
+    <text x="86" y="230" fill="#0f172a" font-size="14">&#38; Kernel</text>
+    <text x="58" y="260" font-size="12.5" font-weight="400" fill="#475569">NVIDIA driver</text>
+    <text x="58" y="278" font-size="12.5" font-weight="400" fill="#475569">(nvidia.ko) loads,</text>
+    <text x="58" y="296" font-size="12.5" font-weight="400" fill="#475569">exposes /dev/nvidia*</text>
+    <text x="58" y="325" font-size="11.5" font-weight="400" fill="#94a3b8">Kernel module</text>
+
+    <path d="M 240 290 L 266 290" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow1)" />
+
+    <!-- Stage 2 -->
+    <rect x="270" y="180" width="200" height="220" rx="14" fill="#f0f9ff" stroke="#38bdf8" stroke-width="2" />
+    <circle cx="296" cy="208" r="15" fill="#38bdf8" />
+    <text x="296" y="213" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="316" y="213" fill="#0f172a" font-size="14">Container</text>
+    <text x="316" y="230" fill="#0f172a" font-size="14">Runtime</text>
+    <text x="288" y="260" font-size="12.5" font-weight="400" fill="#475569">nvidia-container-</text>
+    <text x="288" y="278" font-size="12.5" font-weight="400" fill="#475569">toolkit injects device</text>
+    <text x="288" y="296" font-size="12.5" font-weight="400" fill="#475569">nodes into the OCI spec</text>
+    <text x="288" y="325" font-size="11.5" font-weight="400" fill="#94a3b8">containerd / CRI-O</text>
+
+    <path d="M 470 290 L 496 290" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow1)" />
+
+    <!-- Stage 3 -->
+    <rect x="500" y="180" width="200" height="220" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2" />
+    <circle cx="526" cy="208" r="15" fill="#a78bfa" />
+    <text x="526" y="213" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="546" y="213" fill="#0f172a" font-size="14">CUDA in</text>
+    <text x="546" y="230" fill="#0f172a" font-size="14">Container</text>
+    <text x="518" y="260" font-size="12.5" font-weight="400" fill="#475569">libcuda.so mounted,</text>
+    <text x="518" y="278" font-size="12.5" font-weight="400" fill="#475569">driver/toolkit versions</text>
+    <text x="518" y="296" font-size="12.5" font-weight="400" fill="#475569">must match</text>
+    <text x="518" y="325" font-size="11.5" font-weight="400" fill="#94a3b8">User-space runtime</text>
+
+    <path d="M 700 290 L 726 290" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow1)" />
+
+    <!-- Stage 4 -->
+    <rect x="730" y="180" width="200" height="220" rx="14" fill="#f0fdf4" stroke="#22c55e" stroke-width="2" />
+    <circle cx="756" cy="208" r="15" fill="#22c55e" />
+    <text x="756" y="213" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">4</text>
+    <text x="776" y="213" fill="#0f172a" font-size="14">K8s Device</text>
+    <text x="776" y="230" fill="#0f172a" font-size="14">Scheduling</text>
+    <text x="748" y="260" font-size="12.5" font-weight="400" fill="#475569">Device plugin</text>
+    <text x="748" y="278" font-size="12.5" font-weight="400" fill="#475569">advertises</text>
+    <text x="748" y="296" font-size="12.5" font-weight="400" fill="#475569">nvidia.com/gpu</text>
+    <text x="748" y="325" font-size="11.5" font-weight="400" fill="#94a3b8">Scheduler filters/scores</text>
+
+    <path d="M 930 290 L 956 290" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow1)" />
+
+    <!-- Stage 5 -->
+    <rect x="960" y="180" width="200" height="220" rx="14" fill="#fff7ed" stroke="#f97316" stroke-width="2" />
+    <circle cx="986" cy="208" r="15" fill="#f97316" />
+    <text x="986" y="213" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">5</text>
+    <text x="1006" y="213" fill="#0f172a" font-size="14">Pod</text>
+    <text x="1006" y="230" fill="#0f172a" font-size="14">Running</text>
+    <text x="978" y="260" font-size="12.5" font-weight="400" fill="#475569">Container sees the</text>
+    <text x="978" y="278" font-size="12.5" font-weight="400" fill="#475569">full GPU as if it were</text>
+    <text x="978" y="296" font-size="12.5" font-weight="400" fill="#475569">bare metal</text>
+    <text x="978" y="325" font-size="11.5" font-weight="400" fill="#94a3b8">Whole-device isolation</text>
+  </g>
+
+  <text x="60" y="580" font-size="13" fill="#94a3b8">hrishi.dev</text>
+  <text x="1140" y="580" font-size="13" fill="#94a3b8" text-anchor="end">Hardware &#8594; Runtime &#8594; CUDA &#8594; K8s Scheduling &#8594; Pod</text>
+
+  <defs>
+    <marker id="arrow1" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" />
+    </marker>
+  </defs>
+</svg>

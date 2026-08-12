@@ -1,0 +1,114 @@
+<svg
+  width="1200"
+  height="630"
+  viewBox="0 0 1200 630"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-labelledby="boot-diagram-title boot-diagram-desc"
+  font-family="'Helvetica Neue', Arial, sans-serif"
+>
+  <title id="boot-diagram-title">The Linux boot sequence, from power button to shell prompt</title>
+  <desc id="boot-diagram-desc">
+    A seven-stage pipeline: Firmware (reset vector, BIOS/UEFI), POST, Bootloader (GRUB),
+    Kernel initialization, initramfs, systemd (PID 1), and Login/Shell.
+  </desc>
+
+  <rect x="0" y="0" width="1200" height="630" fill="#f8fafc" />
+
+  <text x="60" y="72" font-size="34" font-weight="700" fill="#0f172a">
+    From Power Button to Shell Prompt
+  </text>
+  <text x="60" y="104" font-size="18" fill="#475569">
+    The Linux boot sequence, seven stages
+  </text>
+
+  <!-- Row 1: stages 1-4 -->
+  <g font-size="15" font-weight="600">
+    <!-- Stage 1 -->
+    <rect x="60" y="150" width="240" height="150" rx="14" fill="#fff7ed" stroke="#f97316" stroke-width="2" />
+    <circle cx="90" cy="180" r="16" fill="#f97316" />
+    <text x="90" y="186" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="112" y="186" fill="#0f172a">Firmware</text>
+    <text x="80" y="218" font-size="13" font-weight="400" fill="#475569">Reset vector &#8594;</text>
+    <text x="80" y="238" font-size="13" font-weight="400" fill="#475569">BIOS / UEFI</text>
+    <text x="80" y="270" font-size="12" font-weight="400" fill="#94a3b8">CPU jumps to ROM</text>
+
+    <path d="M 300 225 L 336 225" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow)" />
+
+    <!-- Stage 2 -->
+    <rect x="340" y="150" width="240" height="150" rx="14" fill="#f0f9ff" stroke="#38bdf8" stroke-width="2" />
+    <circle cx="370" cy="180" r="16" fill="#38bdf8" />
+    <text x="370" y="186" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="392" y="186" fill="#0f172a">POST</text>
+    <text x="360" y="218" font-size="13" font-weight="400" fill="#475569">Hardware self-test,</text>
+    <text x="360" y="238" font-size="13" font-weight="400" fill="#475569">ACPI tables built</text>
+    <text x="360" y="270" font-size="12" font-weight="400" fill="#94a3b8">Firmware diagnostics</text>
+
+    <path d="M 580 225 L 616 225" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow)" />
+
+    <!-- Stage 3 -->
+    <rect x="620" y="150" width="240" height="150" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2" />
+    <circle cx="650" cy="180" r="16" fill="#a78bfa" />
+    <text x="650" y="186" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="672" y="186" fill="#0f172a">Bootloader</text>
+    <text x="640" y="218" font-size="13" font-weight="400" fill="#475569">shim &#8594; GRUB2</text>
+    <text x="640" y="238" font-size="13" font-weight="400" fill="#475569">loads vmlinuz + initrd</text>
+    <text x="640" y="270" font-size="12" font-weight="400" fill="#94a3b8">Secure Boot chain</text>
+
+    <path d="M 860 225 L 896 225" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow)" />
+
+    <!-- Stage 4 -->
+    <rect x="900" y="150" width="240" height="150" rx="14" fill="#f0fdf4" stroke="#22c55e" stroke-width="2" />
+    <circle cx="930" cy="180" r="16" fill="#22c55e" />
+    <text x="930" y="186" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">4</text>
+    <text x="952" y="186" fill="#0f172a">Kernel Init</text>
+    <text x="920" y="218" font-size="13" font-weight="400" fill="#475569">Decompress, start_kernel(),</text>
+    <text x="920" y="238" font-size="13" font-weight="400" fill="#475569">probe devices</text>
+    <text x="920" y="270" font-size="12" font-weight="400" fill="#94a3b8">init/main.c</text>
+  </g>
+
+  <path d="M 1020 300 L 1020 330 L 90 330 L 90 366" stroke="#cbd5e1" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+
+  <!-- Row 2: stages 5-7 -->
+  <g font-size="15" font-weight="600">
+    <!-- Stage 5 -->
+    <rect x="60" y="370" width="240" height="150" rx="14" fill="#fff7ed" stroke="#f97316" stroke-width="2" />
+    <circle cx="90" cy="400" r="16" fill="#f97316" />
+    <text x="90" y="406" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">5</text>
+    <text x="112" y="406" fill="#0f172a">initramfs</text>
+    <text x="80" y="438" font-size="13" font-weight="400" fill="#475569">Loads storage drivers,</text>
+    <text x="80" y="458" font-size="13" font-weight="400" fill="#475569">assembles real root</text>
+    <text x="80" y="490" font-size="12" font-weight="400" fill="#94a3b8">switch_root</text>
+
+    <path d="M 300 445 L 336 445" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow)" />
+
+    <!-- Stage 6 -->
+    <rect x="340" y="370" width="240" height="150" rx="14" fill="#f0f9ff" stroke="#38bdf8" stroke-width="2" />
+    <circle cx="370" cy="400" r="16" fill="#38bdf8" />
+    <text x="370" y="406" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">6</text>
+    <text x="392" y="406" fill="#0f172a">systemd</text>
+    <text x="360" y="438" font-size="13" font-weight="400" fill="#475569">PID 1, parallel unit</text>
+    <text x="360" y="458" font-size="13" font-weight="400" fill="#475569">activation by target</text>
+    <text x="360" y="490" font-size="12" font-weight="400" fill="#94a3b8">sysinit &#8594; multi-user</text>
+
+    <path d="M 580 445 L 616 445" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow)" />
+
+    <!-- Stage 7 -->
+    <rect x="620" y="370" width="240" height="150" rx="14" fill="#faf5ff" stroke="#a78bfa" stroke-width="2" />
+    <circle cx="650" cy="400" r="16" fill="#a78bfa" />
+    <text x="650" y="406" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">7</text>
+    <text x="672" y="406" fill="#0f172a">Login / Shell</text>
+    <text x="640" y="438" font-size="13" font-weight="400" fill="#475569">getty &#8594; PAM auth</text>
+    <text x="640" y="458" font-size="13" font-weight="400" fill="#475569">&#8594; shell exec</text>
+    <text x="640" y="490" font-size="12" font-weight="400" fill="#94a3b8">Prompt appears</text>
+  </g>
+
+  <text x="60" y="580" font-size="13" fill="#94a3b8">hrishi.dev</text>
+  <text x="1140" y="580" font-size="13" fill="#94a3b8" text-anchor="end">Firmware &#8594; POST &#8594; Bootloader &#8594; Kernel &#8594; initramfs &#8594; systemd &#8594; Login</text>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" />
+    </marker>
+  </defs>
+</svg>

@@ -3,6 +3,8 @@ layout: post
 title:  "GPU from Silicon to Container, Part 1: GPU Provisioning in Kubernetes"
 date:   2025-10-23 06:10:10 +0000
 categories: [CUDA, GPU, NVIDIA]
+description: "How a GPU goes from a PCIe device and kernel driver, through the NVIDIA Container Toolkit and CUDA stack, to a pod's nvidia.com/gpu request being scheduled and allocated by Kubernetes."
+image: /assets/gpu-part1-provisioning-pipeline.png
 redirect_from:
   - /cuda,/gpu,/nvidia/2025/10/23/nvidia-cuda-gpu-on-kube.html
   - /cuda/gpu/nvidia/2025/10/23/nvidia-cuda-gpu-on-kube.html
@@ -20,18 +22,20 @@ scheduling all have to agree before a workload can touch the hardware.
 
 This is a 3-part series tracing that full path, mirroring how GPUs actually get used in a cluster:
 
-- **Part 1 (this post) — Provisioning** — from the PCIe device and kernel driver, through the NVIDIA Container
+- **Part 1 (this post): Provisioning**, from the PCIe device and kernel driver, through the NVIDIA Container
   Toolkit and CUDA stack, to how Kubernetes discovers, schedules, and allocates GPUs to pods.
 
-- **[Part 2 — Sharing](https://hrishi.dev/cuda/gpu/nvidia/2025/10/24/nvidia-cuda-gpu-on-kube-2.html)** — the isolation and multiplexing options — MIG, time-slicing, MPS, HAMi, and
-  vGPU — that let multiple workloads split a physical GPU, and what each one trades away to do it.
+- **[Part 2: Sharing](https://hrishi.dev/cuda/gpu/nvidia/2025/10/24/nvidia-cuda-gpu-on-kube-2.html)**, the isolation and multiplexing options (MIG, time-slicing, MPS, HAMi, and
+  vGPU) that let multiple workloads split a physical GPU, and what each one trades away to do it.
 
-- **[Part 3 — CDI, DRA & Operations](https://hrishi.dev/cuda/gpu/nvidia/2025/10/25/nvidia-cuda-gpu-on-kube-3.html)** — the Container Device Interface (CDI) replacing
+- **[Part 3: CDI, DRA & Operations](https://hrishi.dev/cuda/gpu/nvidia/2025/10/25/nvidia-cuda-gpu-on-kube-3.html)**, the Container Device Interface (CDI) replacing
   vendor-specific runtime hooks, Dynamic Resource Allocation (DRA) as the next generation of GPU scheduling, and
   what it takes to run GPUs reliably at scale.
 
 By the end of this part, you'll be able to trace exactly what happens between a pod spec `nvidia.com/gpu: 1` and
 a container's `cudaMalloc()` call succeeding on physical silicon.
+
+![A five-stage diagram of GPU provisioning in Kubernetes: Hardware and Kernel, Container Runtime, CUDA in Container, Kubernetes Device Scheduling, and Pod Running](/assets/gpu-part1-provisioning-pipeline.png)
 
 ## Table of Contents
 
@@ -57,12 +61,12 @@ Before descending into kernel modules and cgroups, it helps to know what's actua
 ### What a GPU Is
 
 A GPU is a massively parallel processor. Where a modern CPU has a handful of cores optimized for sequential,
-branch-heavy logic, a GPU packs thousands of simpler cores — organized into **Streaming Multiprocessors (SMs)**
-— built to run the *same* instruction across *many* data elements at once (SIMT: Single Instruction, Multiple
+branch-heavy logic, a GPU packs thousands of simpler cores, organized into **Streaming Multiprocessors (SMs)**,
+built to run the *same* instruction across *many* data elements at once (SIMT: Single Instruction, Multiple
 Threads).
 
 Each SM has its own register file and fast on-chip shared memory; all SMs share a much larger but slower global
-memory — the "GPU memory" `nvidia-smi` reports (e.g., 40GB on an A100).
+memory: the "GPU memory" `nvidia-smi` reports (e.g., 40GB on an A100).
 
 ```bash
 # ./device_info
@@ -79,19 +83,19 @@ Device 0: NVIDIA H100 80GB HBM3
 
 ### What CUDA Is
 
-**CUDA** (Compute Unified Device Architecture) is NVIDIA's platform for programming that hardware: a C/C++
+**[CUDA](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html)** (Compute Unified Device Architecture) is NVIDIA's platform for programming that hardware: a C/C++
 language extension, a compiler (`nvcc`), and a runtime/driver API. It lets you write a function that runs on
-the GPU — a **kernel** — and launch it across thousands of threads with a few lines of host (CPU) code.
+the GPU (a **kernel**) and launch it across thousands of threads with a few lines of host (CPU) code.
 
-CUDA matters for AI/ML because training and inference are dominated by matrix multiplies and convolutions —
+CUDA matters for AI/ML because training and inference are dominated by matrix multiplies and convolutions,
 exactly the massively parallel work GPUs are built for. Frameworks like PyTorch and TensorFlow compile down to
 CUDA (via libraries like cuDNN and cuBLAS) to get that speedup.
 
 `nvcc` splits this file into host code (compiled with a regular C++ compiler) and device code (compiled to
   PTX, then to GPU-specific machine code called SASS), bundling both into one binary.
 
-This is the kind of program a Kubernetes pod is ultimately running. Everything from here on — driver modules,
-device files, container mounts, device plugins, DRA — exists to get a call like `vectorAdd<<<...>>>()` a
+This is the kind of program a Kubernetes pod is ultimately running. Everything from here on, driver modules,
+device files, container mounts, device plugins, DRA, exists to get a call like `vectorAdd<<<...>>>()` a
 physical GPU to execute on.
 
 ---
@@ -128,7 +132,7 @@ alias:          char-major-195-*
 description:    NVIDIA core GPU kernel module
 version:        580.173.02
 ```
-The `char-major-195-*` alias is the kernel's device-major registration — it's why every `/dev/nvidia0`, `/dev/nvidia1`,
+The `char-major-195-*` alias is the kernel's device-major registration: it's why every `/dev/nvidia0`, `/dev/nvidia1`,
 `/dev/nvidiactl`, and `/dev/nvidia-modeset` below shares major number **195**.
 
 Once created, the device files are:
@@ -152,16 +156,16 @@ crw-rw-rw- 1 root root 195,   0 Oct 23 09:00 /dev/nvidia0
 crw-rw-rw- 1 root root 195,   1 Oct 23 09:00 /dev/nvidia1
 crw-rw-rw- 1 root root 195, 254 Oct 23 09:00 /dev/nvidia-modeset
 crw-rw-rw- 1 root root 195, 255 Oct 23 09:00 /dev/nvidiactl
-crw-rw-rw- 1 root root 509,   0 Oct 23 09:00 /dev/nvidia-uvm   # major varies — see note below
+crw-rw-rw- 1 root root 509,   0 Oct 23 09:00 /dev/nvidia-uvm   # major varies, see note below
 ```
 
 The major number for NVIDIA GPU devices (`/dev/nvidia*`, `/dev/nvidiactl`, `/dev/nvidia-modeset`) is **195**, a fixed number
 registered at driver load time. The UVM device (`/dev/nvidia-uvm`) is different: its major number is **dynamically allocated**
-by the kernel's `misc` subsystem and is **not a stable value** — it varies across kernel versions and distributions.
+by the kernel's `misc` subsystem and is **not a stable value**: it varies across kernel versions and distributions.
 The value 509 shown above is illustrative; on kernels 6.x it is commonly 511. Minor numbers (0, 1, …) identify individual GPU instances.
 
 On multi-GPU systems wired together with NVLink (e.g. DGX-class nodes), a driver load also creates
-`/dev/nvidia-nvswitchctl` — the control device for the NVSwitch fabric that interconnects the GPUs. It uses its own
+`/dev/nvidia-nvswitchctl`, the control device for the NVSwitch fabric that interconnects the GPUs. It uses its own
 major number (unrelated to the 195 used for the GPUs themselves) and only shows up when NVSwitch hardware is present.
 
 ---
@@ -178,7 +182,7 @@ Containers use Linux namespaces to create isolated environments. By default, a c
 
 #### NVIDIA Container Toolkit: Bridging the Gap
 
-The **NVIDIA Container Toolkit** (formerly nvidia-docker2) solves this problem by modifying the container creation process.
+The **[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/index.html)** (formerly nvidia-docker2) solves this problem by modifying the container creation process.
 
 ##### Component Architecture
 ```
@@ -222,7 +226,7 @@ When a container requests GPU access, the NVIDIA Container Toolkit mounts:
 
 ##### cgroups Device Permissions
 
-The toolkit also configures cgroups to allow device access:
+The toolkit also configures the [cgroups device controller](https://docs.kernel.org/admin-guide/cgroup-v1/devices.html) to allow device access:
 ```bash
 # In the container's cgroup
 devices.allow: c 195:* rwm    # Allow all NVIDIA devices (major 195)
@@ -296,12 +300,12 @@ Host Driver Version    Compatible CUDA Toolkit Versions
 ```
 
 The CUDA toolkit in the container must be compatible with the host's driver version, but it doesn't need to
-match exactly — newer drivers support older CUDA toolkits.
+match exactly: newer drivers support older CUDA toolkits.
 
 In practice, images pin toolkit packages to a specific CUDA minor version rather than to the host driver. vLLM's
 Dockerfile, for instance, installs `cuda-nvcc-${CUDA_VERSION_DASH}`, `cuda-cudart-${CUDA_VERSION_DASH}`, `cuda-nvrtc-${CUDA_VERSION_DASH}`,
 and related `-dev` packages for runtime JIT compilation (FlashInfer, DeepGEMM, EP kernels), then separately resolves a
-matching NCCL version with `apt-cache madison libnccl-dev | grep "+cuda${CUDA_VERSION_SHORT}"` — because NCCL packages
+matching NCCL version with `apt-cache madison libnccl-dev | grep "+cuda${CUDA_VERSION_SHORT}"`, because NCCL packages
 don't follow the `cuda-MAJOR-MINOR` naming convention the rest of the toolkit uses, so version pinning has to be done
 by hand. The host driver only needs to be new enough to satisfy whatever `$CUDA_VERSION` got baked into the image this way
 (see [vLLM's Dockerfile, lines 586–607](https://github.com/vllm-project/vllm/blob/releases/v0.21.0/docker/Dockerfile#L586-L607)).
@@ -343,7 +347,7 @@ Behind the scenes:
 
 ### Kubernetes GPU Scheduling
 
-Kubernetes exposes GPUs to pods in two ways: the **Device Plugin** framework, stable since 1.10 and still the
+Kubernetes exposes GPUs to pods in two ways: the **[Device Plugin](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/)** framework, stable since 1.10 and still the
 recommended default for most clusters as of writing, and the newer **Dynamic Resource Allocation (DRA)**, better suited to
 multi-node GPU topologies and richer sharing. This layer walks the Device Plugin flow end to end; DRA gets its
 own deep dive in [Part 3](https://hrishi.dev/cuda/gpu/nvidia/2025/10/25/nvidia-cuda-gpu-on-kube-3.html#dynamic-resource-allocation-dra-next-generation-gpu-scheduling).
@@ -354,11 +358,11 @@ Kubernetes uses an extensible **Device Plugin** system to manage specialized har
 
 ##### Architecture Overview
 
-These are two separate flows, driven by different triggers — worth keeping distinct rather than reading as one
+These are two separate flows, driven by different triggers, worth keeping distinct rather than reading as one
 straight-line pipeline. Discovery/registration runs at plugin startup (and periodically after); allocation only
 runs once the scheduler has already bound a pod to the node.
 
-**1. Discovery & Registration** — runs at Device Plugin startup, independent of any pod:
+**1. Discovery & Registration**: runs at Device Plugin startup, independent of any pod:
 ```
 NVIDIA Device Plugin (DaemonSet)
   - Discovers GPUs (nvidia-smi)
@@ -373,7 +377,7 @@ kube-apiserver (Node status: nvidia.com/gpu: 4)
 kube-scheduler (Finds nodes with requested GPUs)
 ```
 
-**2. Allocation** — runs per pod, only after the scheduler has bound it to this node:
+**2. Allocation**: runs per pod, only after the scheduler has bound it to this node:
 ```
 kube-scheduler
   Binds pod to node with enough GPUs
@@ -388,11 +392,11 @@ NVIDIA Device Plugin (DaemonSet)
     (CDI mode, v0.14+)
 ```
 
-What the plugin returns from `Allocate()` depends on its mode. Older versions — and newer ones running with CDI
-disabled — work out the envs, mounts, and device nodes on the fly for every call, shown as the "Pre-CDI Device
+What the plugin returns from `Allocate()` depends on its mode. Older versions (and newer ones running with CDI
+disabled) work out the envs, mounts, and device nodes on the fly for every call, shown as the "Pre-CDI Device
 Plugin" code in [CDI in Kubernetes](https://hrishi.dev/cuda/gpu/nvidia/2025/10/25/nvidia-cuda-gpu-on-kube-3.html#cdi-in-kubernetes) in Part 3. NVIDIA Device Plugin v0.14+ with CDI enabled skips that
 per-call computation entirely: `Allocate()` just returns a CDI device name (e.g. `nvidia.com/gpu=0`), and
-containerd resolves the actual devices/mounts/env from the static spec already generated on disk — nothing is
+containerd resolves the actual devices/mounts/env from the static spec already generated on disk; nothing is
 discovered or assembled "on the go" at allocation time anymore.
 
 #### Device Plugin Discovery and Registration
@@ -420,6 +424,9 @@ spec:
 ```
 
 ##### The Registration Process
+
+The `Register()` and `ListAndWatch()` calls below come from the kubelet device plugin's
+[gRPC API definition](https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/kubelet/pkg/apis/deviceplugin/v1beta1/api.proto), which every device plugin (not just NVIDIA's) implements.
 
 1. **Device Plugin Starts**
 ```
@@ -549,8 +556,9 @@ list of fully-qualified CDI device names, and lets containerd resolve each name 
 }
 ```
 
-The device plugin no longer needs to know host paths, library versions, or major/minor numbers at Allocate() time — it
-just points at a CDI device name and defers all of that resolution to whatever generated `/etc/cdi/nvidia.yaml`
+The device plugin no longer needs to know host paths, library versions, or major/minor numbers at Allocate() time; it
+just points at a name defined by the [Container Device Interface (CDI) spec](https://github.com/cncf-tags/container-device-interface)
+and defers all of that resolution to whatever generated `/etc/cdi/nvidia.yaml`
 (`nvidia-ctk cdi generate`, run once per driver update).
 
 ##### Step 4: Container Runtime Provisions GPU
@@ -575,7 +583,7 @@ nvidia-smi inside container shows 2 GPUs
 
 **CDI variant of Step 4**: containerd receives the CDI device names (either via CRI's `CDIDevices` field, or via the
 `cdi.k8s.io/devices` pod annotation on older kubelet versions) instead of a devices/mounts list. There's no
-`nvidia-container-runtime-hook` prestart step — containerd's built-in CDI support looks up each name in the on-disk CDI
+`nvidia-container-runtime-hook` prestart step: containerd's built-in CDI support looks up each name in the on-disk CDI
 spec directly and applies its `containerEdits` (device nodes, mounts, env, hooks) to the OCI spec before `runc` ever
 runs. See ["Post-CDI Device Plugin"](https://hrishi.dev/cuda/gpu/nvidia/2025/10/25/nvidia-cuda-gpu-on-kube-3.html#post-cdi-device-plugin) in Part 3 for the full Allocate() implementation
 and containerd integration flow.
@@ -583,7 +591,7 @@ and containerd integration flow.
 
 ##### Wiring the Hook: containerd Runtime Configuration
 
-The chain above doesn't run for every container by default — containerd has to be told that a runtime called
+The chain above doesn't run for every container by default: containerd has to be told that a runtime called
 `nvidia` exists and which binary implements it, and a pod has to explicitly ask for that runtime by name. The
 NVIDIA GPU Operator's toolkit component writes this as a drop-in config on every GPU node:
 
@@ -611,15 +619,15 @@ version = 3
 
 Two things worth noticing:
 
-- **`default_runtime_name = "runc"`** — plain `runc` handles every container unless a pod opts out of it. The
+- **`default_runtime_name = "runc"`**: plain `runc` handles every container unless a pod opts out of it. The
   hook-based flow above is additive, not a replacement for the default path.
 - **Two separate `nvidia` runtimes are registered**, pointing at two different binaries: `nvidia` runs the classic
   `nvidia-container-runtime` → `nvidia-container-runtime-hook` → `nvidia-container-cli` chain from the diagram
   above; `nvidia-cdi` skips the hook entirely and resolves devices from a CDI spec instead (the mechanism CDI and
-  DRA build on — see [Part 3](https://hrishi.dev/cuda/gpu/nvidia/2025/10/25/nvidia-cuda-gpu-on-kube-3.html#the-container-device-interface-cdi-revolution)).
+  DRA build on; see [Part 3](https://hrishi.dev/cuda/gpu/nvidia/2025/10/25/nvidia-cuda-gpu-on-kube-3.html#the-container-device-interface-cdi-revolution)).
 
-Registering the runtime in containerd only makes it available — a pod still has to ask for it. Kubernetes exposes
-that as a `RuntimeClass` object, which the GPU Operator also creates, mapping the cluster-facing name to the
+Registering the runtime in containerd only makes it available: a pod still has to ask for it. Kubernetes exposes
+that as a [`RuntimeClass`](https://kubernetes.io/docs/concepts/containers/runtime-class/) object, which the GPU Operator also creates, mapping the cluster-facing name to the
 containerd runtime handler configured above:
 
 ```yaml
@@ -662,7 +670,7 @@ spec:
 ```
 
 Without `runtimeClassName: nvidia`, this pod would run under plain `runc` and get no GPU access at all from
-containerd's side — everything from the mounted devices to `libcuda.so` shown below depends on the hook actually
+containerd's side: everything from the mounted devices to `libcuda.so` shown below depends on the hook actually
 running, which only happens when the pod names the runtime that triggers it.
 
 ---
@@ -671,7 +679,7 @@ running, which only happens when the pod names the runtime that triggers it.
 
 #### The Magic of NVIDIA_VISIBLE_DEVICES
 
-The `NVIDIA_VISIBLE_DEVICES` environment variable is the key to GPU isolation in containers. It controls which GPUs are visible to CUDA applications.
+The [`NVIDIA_VISIBLE_DEVICES`](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/index.html) environment variable is the key to GPU isolation in containers. It controls which GPUs are visible to CUDA applications.
 
 ##### How It Works
 
@@ -708,7 +716,7 @@ NVIDIA_VISIBLE_DEVICES=GPU-a4f8c2d1-e5f6-7a8b-9c0d-1e2f3a4b5c6d
 Notice that:
 - Container 1 sees only 1 GPU, renumbered as GPU 0, even though the host has 4
 - Setting `NVIDIA_VISIBLE_DEVICES` to a different UUID (or comma-separated list) gives another container a different
-  subset — each container gets its own isolated, independently-numbered GPU namespace
+  subset: each container gets its own isolated, independently-numbered GPU namespace
 
 ##### Driver-Level Enforcement
 
@@ -798,7 +806,7 @@ Scheduling and allocation from here follow the same flow already walked through 
 (say it lands on `node-gpu-03`), kubelet calls the device plugin's `Allocate()` for GPU UUIDs `GPU-uuid-1234` and
 `GPU-uuid-5678`, and containerd folds the resulting devices, mounts, and env (or, on a CDI-enabled setup, a
 `cdiDevices` list) into the OCI spec before `runc` starts the container. What's different this time is what happens
-*inside* the container once it's running — that's the part worth tracing in detail.
+*inside* the container once it's running: that's the part worth tracing in detail.
 
 ##### Step 2: CUDA Application Runs
 
@@ -890,6 +898,14 @@ close(3) = 0
 ## Up Next
 
 This part covered how a GPU goes from silicon to a scheduled, running container via the classic device-plugin
-path — with each pod getting exclusive use of a whole GPU. That's wasteful for most workloads.
-**[Part 2 — GPU Sharing Strategies](https://hrishi.dev/cuda/gpu/nvidia/2025/10/24/nvidia-cuda-gpu-on-kube-2.html)** picks up from here: time-slicing, MPS, MIG, HAMi, and vGPU, and
+path, with each pod getting exclusive use of a whole GPU. That's wasteful for most workloads.
+**[Part 2: GPU Sharing Strategies](https://hrishi.dev/cuda/gpu/nvidia/2025/10/24/nvidia-cuda-gpu-on-kube-2.html)** picks up from here: time-slicing, MPS, MIG, HAMi, and vGPU, and
 what each one trades away to split a physical GPU across multiple workloads.
+
+> **Key Takeaways**
+> - A GPU shows up to the kernel as a set of character devices (`/dev/nvidia0`, `/dev/nvidiactl`, `/dev/nvidia-uvm`, ...) registered under a fixed major number (195 for the core devices; the UVM device's major is allocated dynamically).
+> - The NVIDIA Container Toolkit bridges the container isolation gap by mounting host device files, driver libraries, and utilities into the container at creation time, coordinated through an OCI prestart hook.
+> - The mounted `libcuda.so` driver library must come from the host and match the host's kernel driver version; the CUDA toolkit inside the container just needs to be old enough for that driver to support it.
+> - Kubernetes exposes GPUs to pods through the Device Plugin framework: a DaemonSet that discovers GPUs, registers a resource name like `nvidia.com/gpu` with kubelet, and hands out specific GPU UUIDs when the scheduler binds a pod to a node.
+> - `NVIDIA_VISIBLE_DEVICES` plus the cgroups device controller provide two independent layers of isolation: one at the CUDA driver level, one enforced by the kernel, so a container can only ever see and open the GPUs it was allocated.
+> - CDI-enabled device plugins (v0.14+) skip the per-call hook chain entirely: `Allocate()` just returns a CDI device name, and containerd resolves devices, mounts, and env from a static spec generated once on disk.

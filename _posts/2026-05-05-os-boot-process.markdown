@@ -3,29 +3,34 @@ layout: post
 title:  "From Power Button to Shell Prompt: The Complete Journey of the Linux OS Boot Process"
 date:   2026-05-05 06:00:00 +0000
 categories: [Linux, OS, Systems]
+description: "A stage-by-stage walkthrough of the Linux boot process on x86-64: the reset vector, BIOS/UEFI, POST, GRUB2 and Secure Boot, kernel init, initramfs, systemd, and PAM-based login."
+image: /assets/os-boot-process-stages.png
 redirect_from:
   - /linux,/os,/systems/2026/05/05/os-boot-process.html
 ---
 
-*A deep dive into what happens from the moment you press the power button to the moment your shell is ready for input*
+*A stage-by-stage look at what happens from the moment you press the power button to the moment your shell is ready for input*
 
 ---
 
 ## Introduction
 
-Pressing the power button on a modern computer triggers a carefully orchestrated sequence of events spanning firmware,
-bootloaders, the kernel, and init systems — each layer handing off to the next with increasing sophistication.
+Pressing the power button on a modern computer triggers a carefully orchestrated sequence of events spanning
+firmware, bootloaders, the kernel, and init systems. Each layer hands off to the next with increasing
+sophistication.
 
 This post walks through every stage of that journey on a modern x86-64 Linux system, from the first CPU instruction
 executed out of reset to the login prompt waiting for your credentials.
 
+![A seven-stage diagram of the Linux boot sequence: Firmware, POST, Bootloader, Kernel Init, initramfs, systemd, and Login/Shell](/assets/os-boot-process-stages.png)
+
 ## Table of Contents
 
 1. [Stage 1: Reset Vector and Firmware (BIOS/UEFI)](#stage-1-reset-vector-and-firmware-biosuefi)
-2. [Stage 2: POST — Power-On Self-Test](#stage-2-post--power-on-self-test)
+2. [Stage 2: POST (Power-On Self-Test)](#stage-2-post-power-on-self-test)
 3. [Stage 3: Bootloader](#stage-3-bootloader)
 4. [Stage 4: Kernel Initialization](#stage-4-kernel-initialization)
-5. [Stage 5: initramfs — Early Userspace](#stage-5-initramfs--early-userspace)
+5. [Stage 5: initramfs (Early Userspace)](#stage-5-initramfs-early-userspace)
 6. [Stage 6: Init System (systemd)](#stage-6-init-system-systemd)
 7. [Stage 7: Login and Shell](#stage-7-login-and-shell)
 8. [Putting It All Together](#putting-it-all-together)
@@ -36,13 +41,13 @@ executed out of reset to the login prompt waiting for your credentials.
 
 ### The First Instruction
 
-When power is applied, the CPU does not start executing from RAM — RAM contains nothing yet. Instead, every
+When power is applied, the CPU does not start executing from RAM: it's empty at power-on. Instead, every
 processor has a hardwired **reset vector** mapped by the chipset to a ROM chip on the motherboard containing
 the firmware. The address is architecture-defined:
 
 | Architecture | Reset vector |
 |---|---|
-| x86-64 | `0xFFFFFFF0` — 16 bytes below the top of 32-bit address space, entered in 16-bit real mode |
+| x86-64 | `0xFFFFFFF0`, 16 bytes below the top of 32-bit address space, entered in 16-bit real mode |
 | ARM64 (AArch64) | Configured via the `RVBAR_EL3` register, entered at Exception Level 3 (EL3) |
 
 On x86-64, the reset vector holds a `JMP` that transfers into the full firmware image. On ARM64, the SoC's
@@ -52,9 +57,10 @@ trusted firmware (e.g., ARM Trusted Firmware-A) runs first at EL3 before handing
 
 **BIOS (Basic Input/Output System)** is the legacy firmware standard from the late 1970s. It operates in 16-bit
 real mode and relies on a 512-byte **Master Boot Record (MBR)** at the start of the boot disk. The MBR contains
-a first-stage bootloader and a partition table — cramped into 512 bytes.
+a first-stage bootloader and a partition table, all crammed into 512 bytes.
 
-**UEFI (Unified Extensible Firmware Interface)** replaced BIOS and brings several critical improvements:
+**UEFI (Unified Extensible Firmware Interface)**, formalized by the [UEFI Specification](https://uefi.org/specifications),
+replaced BIOS and brings several critical improvements:
 
 | Feature | BIOS | UEFI |
 |---|---|---|
@@ -65,26 +71,26 @@ a first-stage bootloader and a partition table — cramped into 512 bytes.
 | Network boot | Vendor extensions | Built-in PXE and HTTP boot |
 
 UEFI firmware reads the **EFI System Partition (ESP)**, a FAT32 partition that contains bootloader executables
-(`*.efi` files). The firmware itself understands filesystems — a significant leap over BIOS.
+(`*.efi` files). The firmware itself understands filesystems, which is a significant leap over BIOS.
 
 ---
 
-## Stage 2: POST — Power-On Self-Test
+## Stage 2: POST (Power-On Self-Test)
 
 Before handing off to a bootloader, the firmware runs **POST**, a series of hardware diagnostics:
 
-1. **CPU test** — verify the processor is functioning correctly
-2. **Memory initialization** — train and test DRAM, set up memory channels and timings
-3. **Chipset initialization** — configure the PCH (Platform Controller Hub), PCIe lanes, clocks
-4. **Device enumeration** — discover PCI/PCIe devices, assign I/O ports and memory-mapped I/O ranges
-5. **Video initialization** — bring up a display so error messages can be shown
-6. **Peripheral detection** — USB, SATA controllers, NVMe drives
+1. **CPU test**: verify the processor is functioning correctly
+2. **Memory initialization**: train and test DRAM, set up memory channels and timings
+3. **Chipset initialization**: configure the PCH (Platform Controller Hub), PCIe lanes, clocks
+4. **Device enumeration**: discover PCI/PCIe devices, assign I/O ports and memory-mapped I/O ranges
+5. **Video initialization**: bring up a display so error messages can be shown
+6. **Peripheral detection**: USB, SATA controllers, NVMe drives
 
-The beep codes you may have heard from old machines are POST error signals — one long beep for a memory failure,
-for example. Modern UEFI systems display graphical error screens instead.
+The beep codes you may have heard from old machines are POST error signals. One long beep, for example, usually
+means a memory failure. Modern UEFI systems display graphical error screens instead.
 
-After POST, the firmware has a complete picture of the hardware and constructs the **ACPI tables** — data structures
-that describe the hardware topology to the OS.
+After POST, the firmware has a complete picture of the hardware and constructs the
+**[ACPI tables](https://uefi.org/acpi)**, data structures that describe the hardware topology to the OS.
 
 ---
 
@@ -96,7 +102,8 @@ On a UEFI system, the firmware consults its NVRAM boot entries (managed with `ef
 binary to execute. The ESP is a FAT32 partition; on a running Linux system it is mounted at `/boot/efi`, so
 firmware-internal paths like `/EFI/ubuntu/shimaa64.efi` appear on disk as `/boot/efi/EFI/ubuntu/shimaa64.efi`.
 
-A typical Ubuntu ARM64 ESP looks like this:
+<!-- [PERSONAL EXPERIENCE] -->
+A typical Ubuntu ARM64 ESP, from a machine I booted and inspected while writing this post, looks like this:
 
 ```
 /boot/efi/EFI/BOOT/BOOTAA64.EFI    ← removable-media fallback (copy of shim)
@@ -119,10 +126,11 @@ shimaa64.efi,Ubuntu,,This is the boot entry for Ubuntu
 ```
 
 The EFI `fallback` application reads this CSV to **re-register** the NVRAM boot entry pointing at
-`shimaa64.efi` if it was lost — a self-healing mechanism so the system can boot again after a firmware flash
-clears NVRAM.
+`shimaa64.efi` if it was lost. It's a self-healing mechanism so the system can boot again after a firmware
+flash clears NVRAM.
 
-`efibootmgr` shows the boot configuration.
+<!-- [PERSONAL EXPERIENCE] -->
+`efibootmgr` shows the boot configuration. This is the actual output from the same machine:
 
 ```bash
 # efibootmgr -v
@@ -143,7 +151,7 @@ Boot0003* Ubuntu	HD(1,GPT,1549550d-11b7-41cc-a243-e4ea041f7dd1,0x800,0x165800)/\
 ### Secure Boot and the Shim
 
 On Secure Boot-enabled systems (the default on most Ubuntu installs) the firmware won't execute an arbitrary
-EFI binary — it must be signed by a trusted key. The firmware ships with Microsoft's key in its database, and
+EFI binary. It has to be signed by a trusted key. The firmware ships with Microsoft's key in its database, and
 Microsoft co-signs a small EFI binary called the **shim**. The actual boot chain becomes:
 
 ```
@@ -154,18 +162,18 @@ Firmware → shimaa64.efi (signed by Microsoft)
            vmlinuz (signed by Canonical)
 ```
 
-`mmaa64.efi` (MokManager) is a helper that runs when you need to enroll or manage **Machine Owner Keys (MOK)**
-— for example when you install a custom kernel module that needs signing.
+`mmaa64.efi` (MokManager) is a helper that runs when you need to enroll or manage **Machine Owner Keys (MOK)**,
+for example when you install a custom kernel module that needs signing.
 
 ### GRUB2
 
-**GRUB (Grand Unified Bootloader)** is the most common bootloader on Linux systems. After shim hands off,
-GRUB:
+**[GRUB (Grand Unified Bootloader)](https://www.gnu.org/software/grub/manual/grub/grub.html)** is the most
+common bootloader on Linux systems. After shim hands off, GRUB:
 
 1. Reads its configuration from `/boot/grub/grub.cfg`
 2. Presents a menu of kernel choices (with a timeout)
 3. Loads the selected kernel image (`vmlinuz`) and initial RAM disk (`initrd`) into memory
-4. Passes a **kernel command line** — a string of parameters like `root=/dev/sda1 ro quiet splash`
+4. Passes a **kernel command line**: a string of parameters like `root=/dev/sda1 ro quiet splash`
 5. Transfers control to the kernel entry point
 
 ```
@@ -183,16 +191,16 @@ the kernel's decompression stub, which unpacks the real kernel and jumps into it
 
 The kernel entry point (in `arch/x86/boot/header.S`) runs in a special mode. Its first job is:
 
-1. **Decompress itself** — `vmlinuz` is a `zImage` or `bzImage`, gzip/lz4/zstd-compressed. The decompressor
+1. **Decompress itself**: `vmlinuz` is a `zImage` or `bzImage`, gzip/lz4/zstd-compressed. The decompressor
    unpacks the kernel to a safe memory location.
-2. **Switch to 64-bit long mode** — the CPU starts in real or protected mode; the kernel sets up page tables and
+2. **Switch to 64-bit long mode**: the CPU starts in real or protected mode; the kernel sets up page tables and
    transitions to 64-bit mode.
-3. **Establish initial page tables** — a minimal identity mapping to get execution running.
+3. **Establish initial page tables**: a minimal identity mapping to get execution running.
 
 ### `start_kernel()`
 
 After decompression and mode switches, execution reaches [`start_kernel()`](https://github.com/torvalds/linux/blob/9207d47f966be9f4d52e7e0119ac2b7a7e366f3e/init/main.c#L1016)
-in `init/main.c` — the real beginning of the kernel in C code. This function calls hundreds of initialization
+in `init/main.c`, the real starting point of the kernel's C code. This function calls hundreds of initialization
 routines in sequence:
 
 ```c
@@ -212,17 +220,17 @@ asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
 
 Key subsystems initialized here:
 
-- **Memory management** — the buddy allocator, slab allocator, vmalloc
-- **Scheduler** — CFS (Completely Fair Scheduler) data structures
-- **Interrupt subsystem** — IDT (Interrupt Descriptor Table), APIC
-- **VFS (Virtual Filesystem Switch)** — the abstraction layer over all filesystems
-- **Driver model** — the `kobject`/`sysfs` infrastructure
+- **Memory management**: the buddy allocator, slab allocator, vmalloc
+- **Scheduler**: CFS (Completely Fair Scheduler) data structures
+- **Interrupt subsystem**: IDT (Interrupt Descriptor Table), APIC
+- **VFS (Virtual Filesystem Switch)**: the abstraction layer over all filesystems
+- **Driver model**: the `kobject`/`sysfs` infrastructure
 
 ### Device Detection and Driver Binding
 
 The kernel reads the ACPI tables and walks the PCI bus, building a device tree. For each discovered device,
 it matches against registered drivers using the bus's `match()` function. When a match is found, the driver's
-`probe()` function runs — allocating resources, mapping registers, and registering the device with higher-level
+`probe()` function runs: it allocates resources, maps registers, and registers the device with higher-level
 subsystems (block layer, network stack, etc.).
 
 ### Mounting the Root Filesystem
@@ -236,13 +244,13 @@ This chicken-and-egg problem is solved by **initramfs**.
 
 ---
 
-## Stage 5: initramfs — Early Userspace
+## Stage 5: initramfs (Early Userspace)
 
 ### What is initramfs?
 
-**initramfs** (initial RAM filesystem) is a compressed `cpio` archive embedded alongside the kernel or passed as
-a separate file by the bootloader. The kernel extracts it into a `tmpfs` filesystem in memory and mounts it as
-the initial `/`.
+**[initramfs](https://www.kernel.org/doc/html/latest/admin-guide/initrd.html)** (initial RAM filesystem) is a
+compressed `cpio` archive embedded alongside the kernel or passed as a separate file by the bootloader. The
+kernel extracts it into a `tmpfs` filesystem in memory and mounts it as the initial `/`.
 
 ```
 initramfs contains:
@@ -259,11 +267,11 @@ initramfs contains:
 
 The init binary inside initramfs (often `systemd` or a script like `busybox init`) performs early setup:
 
-1. **Load kernel modules** — storage drivers (NVMe, AHCI), filesystem drivers (ext4, btrfs), crypto drivers
-2. **Assemble storage** — activate RAID arrays (`mdadm`), open LUKS volumes (`cryptsetup`), activate LVM
-3. **Find and mount the real root** — using the `root=` kernel parameter
-4. **`pivot_root` or `switch_root`** — replace the initramfs `/` with the real root filesystem
-5. **Execute the real init** — hand off to `/sbin/init` on the real root
+1. **Load kernel modules**: storage drivers (NVMe, AHCI), filesystem drivers (ext4, btrfs), crypto drivers
+2. **Assemble storage**: activate RAID arrays (`mdadm`), open LUKS volumes (`cryptsetup`), activate LVM
+3. **Find and mount the real root**: using the `root=` kernel parameter
+4. **`pivot_root` or `switch_root`**: replace the initramfs `/` with the real root filesystem
+5. **Execute the real init**: hand off to `/sbin/init` on the real root
 
 The `switch_root` call is irreversible: the initramfs is freed from memory and the process continues in the real root.
 
@@ -271,12 +279,13 @@ The `switch_root` call is irreversible: the initramfs is freed from memory and t
 
 ## Stage 6: Init System (systemd)
 
-Modern Linux distributions use **systemd** as PID 1 — the first real userspace process, parent of all others.
+Modern Linux distributions use **systemd** as PID 1, the first real userspace process and parent of all others.
 
 ### systemd's Startup Phases
 
-systemd organizes startup into **targets** (analogous to runlevels in SysV init). The default target for a
-desktop is `graphical.target`; for a server, `multi-user.target`. These are dependency graphs of **units**.
+systemd organizes startup into **[targets](https://www.freedesktop.org/software/systemd/man/systemd.special.html)**
+(analogous to runlevels in SysV init). The default target for a desktop is `graphical.target`; for a server,
+`multi-user.target`. These are dependency graphs of **units**.
 
 ```
 sysinit.target
@@ -305,8 +314,8 @@ SysV scripts.
 
 One of systemd's powerful features is **socket activation**: systemd creates the socket *before* starting the
 service, queuing connections. The service starts on first use. This means services can declare dependencies on
-each other via sockets without strict ordering — they all start in parallel and connections block until the
-service is ready.
+each other via sockets without strict ordering. They all start in parallel, and connections simply block until
+the service is ready.
 
 ### Journal and Logging
 
@@ -330,7 +339,8 @@ For a text console, systemd starts **getty** on each virtual terminal (e.g., `ag
 1. Opens the TTY device
 2. Prints the login prompt
 3. Reads the username
-4. Calls `/bin/login`, which reads the password and authenticates via **PAM (Pluggable Authentication Modules)**
+4. Calls `/bin/login`, which reads the password and authenticates via
+   **[PAM (Pluggable Authentication Modules)](https://man7.org/linux/man-pages/man8/PAM.8.html)**
 5. On success, drops privileges to the user's UID/GID and execs the user's shell
 
 ### PAM
@@ -344,6 +354,10 @@ auth    optional   pam_google_authenticator.so  ← TOTP 2FA
 session required   pam_limits.so    ← apply ulimits from /etc/security/limits.conf
 session required   pam_systemd.so   ← register session with logind
 ```
+
+PAM sits on top of the same kernel-level security primitives (namespaces, capabilities, LSMs) covered in my
+recap of the [man7.org Linux Security and Isolation APIs course](https://hrishi.dev/linux/security/kernel/isolation/apis/2025/11/02/linux-security-isolation-apis-course.html),
+if you want to go a layer deeper than PAM itself.
 
 ### Shell Startup
 
@@ -361,7 +375,10 @@ At this point, a shell prompt appears and the OS is fully booted.
 
 ## Putting It All Together
 
-Here is the complete boot sequence as a timeline:
+The timeline below is an **illustrative example**, not a benchmark from a specific machine, since actual timings
+vary significantly with storage type (NVMe vs. spinning disk), firmware implementation, and how many services a
+distribution starts by default. Use `systemd-analyze` and `systemd-analyze blame` on your own machine to see
+real, measured numbers for this breakdown.
 
 ```
 [0 ms]      CPU reset → firmware ROM at 0xFFFFFFF0
@@ -374,25 +391,27 @@ Here is the complete boot sequence as a timeline:
 [1.0 s]     switch_root → PID 1 = systemd on the real root
 [1.5 s]     systemd activates sysinit.target → basic.target
 [2.0 s]     Network, storage, logging services start in parallel
-[3.0 s]     multi-user.target reached — system is operational
+[3.0 s]     multi-user.target reached: system is operational
 [3.5 s]     graphical.target: display manager starts
 [4.0 s]     Login prompt appears
 ```
 
-Modern systems with NVMe storage and UEFI can boot to a usable desktop in under 5 seconds. The old BIOS + spinning
-disk path could take 30-60 seconds for the same journey.
+The general pattern holds even if your own numbers differ: NVMe storage and UEFI cut boot time dramatically
+compared to the old BIOS-plus-spinning-disk path, where POST alone could take several seconds and a full boot
+commonly ran 30-60 seconds.
 
 ---
 
-## Key Takeaways
+## Closing Thoughts
 
-- **The reset vector** is a hardware contract: the CPU always begins at `0xFFFFFFF0`, mapped to firmware ROM.
-- **UEFI replaced BIOS** with a richer environment: 64-bit execution, FAT32 ESP, Secure Boot, and a full driver model.
-- **The bootloader's job** is narrow: find the kernel, load it, pass parameters, jump.
-- **The kernel initializes hardware incrementally**: it can't use drivers it hasn't loaded yet, so the order matters.
-- **initramfs** breaks the chicken-and-egg problem of needing drivers to mount the filesystem that contains the drivers.
-- **systemd parallelizes init**, activating units based on a dependency graph rather than a static script order.
-- **PAM decouples authentication** from the applications that need it, enabling pluggable 2FA, LDAP, biometrics, etc.
+Understanding this stack, from the reset vector through PAM, is invaluable when debugging boot failures,
+hardening systems, building embedded Linux images, or simply satisfying the curiosity of knowing what your
+machine is actually doing before that shell prompt appears.
 
-Understanding this stack is invaluable when debugging boot failures, hardening systems, building embedded Linux images,
-or simply satisfying the curiosity of knowing what your machine is actually doing in that 4-second window.
+> **Key Takeaways**
+> - The CPU always starts at a hardwired **reset vector**, `0xFFFFFFF0` on x86-64, mapped to firmware ROM rather than RAM.
+> - **UEFI replaced BIOS** with 64-bit execution, a FAT32 EFI System Partition, Secure Boot, and a full driver model.
+> - The bootloader's job is narrow: find the kernel, load it, pass parameters, and jump. GRUB2 does this via `shim → grubaa64.efi → vmlinuz`.
+> - **initramfs** solves the chicken-and-egg problem of needing drivers to mount the filesystem that contains the drivers.
+> - **systemd** parallelizes init by activating units based on a dependency graph rather than a static script order.
+> - **PAM** decouples authentication policy from the applications that need it, enabling pluggable 2FA, LDAP, and biometrics.
