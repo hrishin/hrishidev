@@ -346,8 +346,6 @@ nvidia-ctk cdi generate \
   --format=yaml \
   --device-name-strategy=index \
   --driver-root=/ \
-  --nvidia-ctk-path=/usr/bin/nvidia-ctk \
-  --ldcache-path=/etc/ld.so.cache
 ```
 
 **AMD ROCm**
@@ -359,7 +357,7 @@ rocm-cdi-generator --output=/etc/cdi/amd.yaml
 
 ---
 
-### Dynamic Resource Allocation (DRA): Next-Generation GPU Scheduling
+## Dynamic Resource Allocation (DRA): Next-Generation GPU Scheduling
 
 The **[Device Plugin](https://hrishi.dev/cuda/gpu/nvidia/2025/10/23/nvidia-cuda-gpu-on-kube-1.html#kubernetes-gpu-scheduling)** framework (Part 1) works well for simple whole-GPU assignment, but it has fundamental limitations
 when workloads need fine-grained control: specific MIG profiles, multi-node NVLink topology, shared resources, or
@@ -370,7 +368,7 @@ the opaque device plugin gRPC API with a structured, declarative model visible t
 The official DRA driver for NVIDIA GPUs is maintained at
 **[github.com/kubernetes-sigs/dra-driver-nvidia-gpu](https://github.com/kubernetes-sigs/dra-driver-nvidia-gpu)** under the `kubernetes-sigs` organisation.
 
-#### Why Device Plugin Falls Short
+### Why Device Plugin Falls Short
 
 **Resource granularity.** The device plugin API only knows how to hand out whole devices: a GPU is a GPU. MIG
 support, covered in [Part 2](https://hrishi.dev/cuda/gpu/nvidia/2025/10/24/nvidia-cuda-gpu-on-kube-2.html), isn't
@@ -396,19 +394,18 @@ physical GPU, which MIG slice, which UUID. That information lives only inside th
 invisible to `kubectl` or the scheduler, which makes debugging placement issues or building topology-aware
 tooling on top of it much harder than it should be.
 
-**Error-prone recovery.** Because the scheduler has no visibility into, or accounting for, actual GPU state, a
-pod can get stuck in a container creation error with no escape hatch to recover from such state:
-nothing in the allocation loop knows enough to retry or reschedule intelligently.
-Hand-carving MIG instances outside the device plugin's view
+**Error-prone recovery.** Hand-carving MIG instances outside the device plugin's view
 makes this worse: the [MIG Manager](https://hrishi.dev/cuda/gpu/nvidia/2025/10/24/nvidia-cuda-gpu-on-kube-2.html#who-actually-stands-mig-up)
-has no way to reconcile a layout it didn't create, 
-so its record of "current state" quietly drifts from what's actually on the GPU.
+has no way to reconcile a layout it didn't create, so its record of "current state" quietly drifts from what's actually on the GPU.
+Because the scheduler has no visibility into actual GPU state, a
+pod can get stuck in a container creation error with no escape hatch to recover from such state without manual
+intervention.
 
-#### DRA Core Concepts
+### DRA Core Concepts
 
 DRA replaces the device plugin gRPC interface with three Kubernetes API objects.
 
-##### ResourceSlice: Driver Advertises Devices
+#### ResourceSlice: Driver Advertises Devices
 
 A DRA driver publishes `ResourceSlice` objects (one per node) instead of calling `ListAndWatch()`.
 Each slice describes the devices on that node with structured, queryable attributes:
@@ -436,14 +433,14 @@ spec:
         memory: 80Gi
 ```
 
-##### DeviceClass: Cluster Policy for a Device Type
+#### DeviceClass: Cluster Policy for a Device Type
 
 `DeviceClass` is a cluster-scoped object set by administrators. The NVIDIA DRA driver registers two device classes out of the box:
 
 - `gpu.nvidia.com`: whole GPU devices
 - `mig.nvidia.com`: MIG (Multi-Instance GPU) slices
 
-##### ResourceClaim: User Requests Devices
+#### ResourceClaim: User Requests Devices
 
 Instead of `resources.limits.nvidia.com/gpu: 1`, a workload creates a `ResourceClaim`.
 The `exactly:` stanza specifies how many devices are required and optional CEL selectors:
@@ -533,7 +530,7 @@ spec:
     effect: "NoSchedule"
 ```
 
-#### NVIDIA DRA Driver (`dra-driver-nvidia-gpu`)
+### NVIDIA DRA Driver (`dra-driver-nvidia-gpu`)
 
 The driver is maintained at **[github.com/kubernetes-sigs/dra-driver-nvidia-gpu](https://github.com/kubernetes-sigs/dra-driver-nvidia-gpu)** and ships two
 kubelet plugins:
@@ -543,7 +540,7 @@ kubelet plugins:
 | `gpu-kubelet-plugin` | Experimental | Whole-GPU and MIG device allocation |
 | `compute-domain-kubelet-plugin` | Officially supported | Multi-Node NVLink / ComputeDomain orchestration |
 
-##### Architecture
+#### Architecture
 
 ```
 kube-apiserver
@@ -571,7 +568,7 @@ containerd (CDI-aware)
   Reads CDI spec, injects devices/libs/env
 ```
 
-##### MIG Allocation via DRA
+#### MIG Allocation via DRA
 
 DRA makes MIG allocation first-class. The `mig.nvidia.com` DeviceClass exposes individual MIG slices
 as devices in `ResourceSlice`. CEL selectors on the `profile` attribute replace the separate
@@ -641,34 +638,150 @@ The driver handles MIG instance creation and teardown as part of the claim lifec
 > NOTE: This closes the [error-prone recovery](#why-device-plugin-falls-short) gap described earlier: DRA
 allocates MIG instances dynamically instead of requiring the manual hand-carving the MIG Manager can't reconcile.
 
-##### ComputeDomains: Multi-Node NVLink (Officially Supported)
+#### ComputeDomains: Multi-Node NVLink (Officially Supported)
 
-A **ComputeDomain** is an abstraction for robust, secure Multi-Node NVLink (MNNVL) connectivity, the kind of
-setup that turns a rack of GB200 NVL72-class or Vera Rubin NVL72 nodes into what's effectively one supercomputer, with chip-to-chip
-bandwidth around 1.8 TB/s to 3.6 TB/s. Without ComputeDomains, wiring that up means hand-managing the low-level 
-NVLink fabric topology yourself; the driver instead gives you a Kubernetes object and does the orchestration underneath 
+A [ComputeDomain](https://github.com/kubernetes-sigs/dra-driver-nvidia-gpu/tree/main) (CD) is an abstraction for robust, secure Multi-Node NVLink (MNNVL) connectivity, 
+the kind of setup that turns a rack of GB200 NVL72-class or Vera Rubin NVL72 nodes into what's effectively one supercomputer, with chip-to-chip
+bandwidth around 1.8 TB/s to 3.6 TB/s. Without ComputeDomains, wiring that up means hand-managing the low-level
+NVLink fabric topology yourself; the driver instead gives you a Kubernetes object and does the orchestration underneath
 it (optimal placement policies).
 
 It guarantees two things for pods inside the domain: 
 * MNNVL-reachability between them, and isolation from pods
 outside it. 
-* That isolation is implemented via **IMEX (Internode Memory Exchange)**: the driver launches and
-configures the IMEX daemons, domains, and channels for you, rather than requiring a manually managed IMEX
+* That isolation is implemented via [IMEX (Internode Memory Exchange)](https://docs.google.com/presentation/d/1Xupr8IZVAjs5bNFKJnYaK0LE7QWETnJjkz6KOfLu87E/edit?pli=1&slide=id.g373e0ebfa8e_1_15#slide=id.g373e0ebfa8e_1_15): 
+the driver launches and configures the IMEX daemons, domains, and channels for you, rather than requiring a manually managed IMEX
 deployment alongside the workload.
+
+```yaml
+apiVersion: resource.nvidia.com/v1beta1
+kind: ComputeDomain
+metadata:
+  name: compute-domain
+spec:
+  numNodes: 18
+  channel:
+    resourceClaimTemplate:
+      name: compute-domain-channel
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-workload
+  labels:
+    app: test-workload
+spec:
+  replicas: 18
+  selector:
+    matchLabels:
+      app: test-workload
+  template:
+    metadata:
+      labels:
+        app: test-workload
+    spec:
+      containers:
+      - name: ctr
+        image: ubuntu:22.04
+        command: ["test-workload"]
+        resources:
+          limits:
+            nvidia.com/gpu: 4
+          claims:
+          - name: channel
+      resourceClaims:
+      - name: channel
+        resourceClaimTemplateName: compute-domain-channel #compute-domain claim from the first resource
+```
+
+**Combining a ComputeDomain with a per-node topology constraint** is where DRA's two topology mechanisms, single-node
+PCIe placement and multi-node NVLink placement, stack. Each replica below still joins the shared `ComputeDomain` for
+MNNVL-reachability across nodes, but it also carries its own `ResourceClaimTemplate` that requests a GPU and its
+RDMA NIC together and constrains them to the same PCIe root switch, so GPUDirect RDMA traffic to other racks never
+has to cross a NUMA boundary to get off the node:
 
 ```yaml
 apiVersion: resource.k8s.io/v1
 kind: ResourceClaimTemplate
 metadata:
-  name: compute-domain
+  name: gpu-nic-claim
 spec:
   spec:
     devices:
       requests:
-      - name: domain
+      - name: gpu
         exactly:
-          deviceClassName: computedomain.nvidia.com
+          deviceClassName: gpu.example.com
+          count: 1
+      - name: nic
+        exactly:
+          deviceClassName: dranet
+          count: 1
+      constraints:
+      # Ensure the GPU and its RDMA NIC share the same PCIe root switch
+      - requests: ["gpu", "nic"]
+        matchAttribute: resource.kubernetes.io/pcieRoot
+---
+apiVersion: resource.nvidia.com/v1beta1
+kind: ComputeDomain
+metadata:
+  name: compute-domain
+spec:
+  numNodes: 18
+  channel:
+    resourceClaimTemplate:
+      name: compute-domain-channel
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: training-worker
+  labels:
+    app: training-worker
+spec:
+  replicas: 18
+  selector:
+    matchLabels:
+      app: training-worker
+  template:
+    metadata:
+      labels:
+        app: training-worker
+    spec:
+      containers:
+      - name: trainer
+        image: registry.example.com/trainer:latest
+        resources:
+          claims:
+          - name: devices
+          - name: channel
+      resourceClaims:
+      - name: devices
+        resourceClaimTemplateName: gpu-nic-claim
+      - name: channel
+        resourceClaimTemplateName: compute-domain-channel
 ```
+
+The `devices` claim and the `channel` claim are independent requests resolved by the same scheduling pass: `devices`
+pins the GPU and its RDMA NIC to one PCIe root on whichever node the pod lands on, and `channel` binds that pod into
+the `ComputeDomain` so its GPU stays MNNVL-reachable from the other 17 replicas. That's the topology-awareness gap
+called out earlier under [Why Device Plugin Falls Short](#why-device-plugin-falls-short), now closed at both
+scales at once: a device plugin can hand out "2 GPUs" independently, with no way to guarantee they share a PCIe
+switch with the NIC that carries their traffic off-node, and no notion of a fabric spanning nodes at all.
+
+> NOTE: `ComputeDomain` itself only ever aligns GPUs. It's a Kubernetes abstraction over IMEX (Internode Memory
+> Exchange) channels, the mechanism that lets GPUs on separate nodes read and write each other's memory over
+> Multi-Node NVLink; it has no concept of CPU, PCIe root, or NUMA placement. The `devices` claim above is doing
+> the GPU/NIC PCIe-root alignment entirely on its own, via the `dranet` DeviceClass, a separate DRA driver with no
+> relationship to `ComputeDomain`; `channel` just adds GPU-to-GPU reachability across nodes on top of it. The two
+> are independently scheduled and satisfied, `ComputeDomain` doesn't know or care what else a claim in the same
+> pod is requesting.
+>
+> It's also not RDMA. IMEX moves memory over the NVLink/NVSwitch fabric via CUDA's fabric-memory export/import
+> calls, a different transport from the GPUDirect RDMA the `gpu-nic-claim` above is set up to accelerate, and
+> NVIDIA's own docs treat them as distinct: disabling MNNVL makes NCCL "fall back to the available network
+> configurations... such as InfiniBand or Ethernet (RoCE)," which only makes sense if the two are separate paths,
+> not the same one. `ComputeDomain` never touches the RDMA NIC itself; that's entirely the `dranet` claim's job.
 
 Unlike the experimental GPU plugin, ComputeDomain support is officially maintained and production-ready but two
 details matter before you treat it as a hard multi-tenancy boundary:
@@ -684,7 +797,7 @@ Above the DRA layer, NCCL 2.25+ is the minimum version with MNNVL support. Hence
 will simply not use the NVLink fabric a ComputeDomain gives it, silently falling back to slower interconnects
 instead of failing outright.
 
-#### DRA Scheduling Flow
+### DRA Scheduling Flow
 
 ```
 User creates ResourceClaim (status: unallocated)
@@ -715,7 +828,7 @@ The key difference from the device plugin flow: **the scheduler has full visibil
 attributes and makes the allocation decision**, rather than the plugin deciding inside an opaque
 gRPC call at pod start.
 
-#### DRA vs Device Plugin Comparison
+### DRA vs Device Plugin Comparison
 
 | Aspect | Device Plugin | DRA Driver |
 |---|---|---|
