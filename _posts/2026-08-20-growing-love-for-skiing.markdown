@@ -82,7 +82,7 @@ _Night skiing in Saalbach_
 Chamonix offers a really wide range of pistes, and the place itself is quite pretty!
 
 ![The Aiguille du Midi peak station in Chamonix, France, rising above the clouds](/assets/aiguille-du-midi-chamonix.jpg)
-_Photo: Aiguille du Midi peak station in Chamonix, France_
+_Aiguille du Midi peak station in Chamonix, France_
 
 Lapland (famously known for the Santa Claus Village) has its own beauty. The slopes are really comfortable, especially for beginners, or people like me who peaked at "comfortable." If you enjoy slow cross-country skiing you can see how beautiful the village is, especially the cabins and forests. It also offers plenty of fun activities, like snowmobile riding and husky rides, and if you have a caravan, there are plenty of nice places for camping.
 
