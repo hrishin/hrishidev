@@ -79,6 +79,7 @@ But so far I'd say I enjoy the Austrian Alps most, with long pistes and a bit mo
 ![A wide floodlit ski slope at dusk in Saalbach, Austria, with the village lights below](/assets/saalbach-night-skiing-2.jpg)
 _Night skiing in Saalbach_
 
+And of course I love French Alps, Bonjour!
 Chamonix offers a really wide range of pistes, and the place itself is quite pretty!
 
 ![The Aiguille du Midi peak station in Chamonix, France, rising above the clouds](/assets/aiguille-du-midi-chamonix.jpg)
