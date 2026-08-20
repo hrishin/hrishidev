@@ -14,13 +14,13 @@ Usually I don't share personal things. Turns out all it took to change my mind w
 ## How it started
 
 Before even saying how it started, I should say that looking back at my childhood and teenage years, I always wanted to
-become some sort of sportsman or athlete; becoming a software engineer was never the plan. (I used to dismantle all sorts of electronics and mechanical things, sometimes putting them back together and sometimes producing what could generously be called abstract sculpture, which cost my parents some fortune in replacements, apparently curious what led me where I'm today).
+become some sort of sportsman or athlete; becoming a software engineer was never the plan. (I used to dismantle all sorts of electronics and mechanical things, sometimes putting them back together and sometimes producing what could generously be called abstract sculpture, which cost my parents a small fortune in replacements, and might explain what led me to where I am today).
 I was a competitive sportsman growing up and never imagined my life without sports. There
-used to be a time when I'd be on the playground as early as 5am and still last person standing and practicing there at 10pm, which, looking back, was either discipline or an early 
-symptom of an addiction. It was consistently like that. Every day I used to dream about sports. Growing up in India it was mostly about Cricket, but among others
-I did well enough in Bandminton, Swimming, Skating, Volleyball, Cycling and Football.
+used to be a time when I'd be on the playground as early as 5am and still the last person standing and practicing there at 10pm, which, looking back, was either discipline or an early
+symptom of an addiction. It was consistently like that. Every day I used to dream about sports. Growing up in India, it was mostly about Cricket, but among others
+I did well enough in Badminton, Swimming, Skating, Volleyball, Cycling and Football.
 
-Down the line life happens, and I left sports completely, like flipping a kill switch, around my late teens. RIP athletic career.., gone but not forgotten.
+Down the line life happens, and I left sports completely, like flipping a kill switch, around my late teens. RIP athletic career, gone but not forgotten.
 
 After almost 20 years, at the age of 36, I happened to join a company where everyone seemed quite passionate about some sort of sport, which was mildly alarming for someone whose most recent sport was competitive sitting. In April 2023 I was on a road trip through the Scandinavian nations, and while passing
 through Hemsedal in Norway, I stopped randomly at a ski resort. My friends and I, dressed for the occasion in pajamas and sneakers because we hadn't planned this at all, were standing by the ski lift when a generous lady offered us a free ride up, possibly out of kindness, possibly because we looked like lunatics.
@@ -28,9 +28,9 @@ through Hemsedal in Norway, I stopped randomly at a ski resort. My friends and I
 ![Standing in pajamas and sneakers on a snowy deck in Hemsedal, Norway, with mountains in the background](/assets/hemsedal-norway-pajamas-ski-lift.jpg)
 _Pretending to smile after falling off on the ramp, thanks to my sneakers_
 
-But standing there watching people of all ages (kids, teens, adults, and whole families), I felt quite like I'd want to give it a try someday.
+But standing there watching people of all ages (kids, teens, adults, and whole families), I quite felt like I'd want to give it a try someday.
 
-Fast forward, my former workplace DRW arranged an office skiing trip to Morzine, France in the March 2024. I thought of signing up
+Fast forward, my former workplace DRW arranged an office skiing trip to Morzine, France in March 2024. I thought of signing up
 for it, despite a few colleagues warning me that breaking my bones was quite probable, which in hindsight was less a warning and more a professional forecast. Finally I took
 a leap of faith and started getting myself ready for the skiing trip.
 My colleagues seemed like experts, and I wanted to make sure I'd be able to keep up. So I took
@@ -38,7 +38,9 @@ this on like a mission and started taking lessons north of London at [The Snow C
 After roughly 18-20 hours of lessons I thought I was ready to conquer the slopes :P. But real slopes
 are just out there to prove you wrong, gravity included, and hell yeah, I was nowhere close to what I'd been imagining and
 would need to keep up with friends while skiing. But after that one skiing trip I felt I'd learned something new,
-and I think it was an unconscious reminder for me: learning a new sport gives you the confidence that you could do something worthwhile you've never done before in life. I came back with pretty much mesmerising experiences, some fond memories, and a new nickname (I've been labeled a loose cannon by a colleague ever since, a title I've chosen to wear with pride, mostly because the alternatives suggested were worse.)
+and I think it was an unconscious reminder for me: learning a new sport gives you the confidence that you could do something worthwhile you've never done before in 
+life. I came back with pretty much mesmerizing experiences, some fond memories, and a new nickname (I've been labeled a loose cannon by a colleague ever since, 
+a title I've chosen to wear with pride, mostly because the alternatives suggested were worse.)
 > **Note:** In between all this skiing, I also made it to KubeCon EU Paris 2024, because apparently the adventures never stop. A good friend of mine presented a talk on Confidential Containers (CoCo): [https://www.youtube.com/watch?v=Ko0o5_hpmxI](https://www.youtube.com/watch?v=Ko0o5_hpmxI)
 
 ![A group photo on a sunny ski deck in Morzine, France, with everyone holding drinks](/assets/morzine-apres-ski-group.jpg)
@@ -52,8 +54,11 @@ After this, I kept doing more skiing trips: France (Chamonix, Alpe d'Huez), Finl
 
 Every season I go in with the mindset to improve, just like any athlete pushes out of their comfort zone to
 keep improving, or at least out of the beginner slope and into something with actual gradient. That's something sports can offer in life: getting disciplined.
+Another reason I thought I'd share this experience is that it's never too late to learn something you've always dreamed of, and the key to
+getting better at anything is practice.
 
-Of course, the nature in those mountains is incredibly beautiful, and if you appreciate deep silence, there are certain places in the mountains where you can really find it, usually right before you fall over and break it yourself.
+Of course, the nature in those mountains is incredibly beautiful, and if you appreciate deep silence, there are certain places in the mountains where you can 
+really find it, usually right before you fall over and break it yourself.
 
 For me, being on the ski slope has eventually become quite meditative, as if my mind has escaped
 reality and is just happy in the moment, right up until the moment involves a tree.
@@ -79,7 +84,7 @@ But so far I'd say I enjoy the Austrian Alps most, with long pistes and a bit mo
 ![A wide floodlit ski slope at dusk in Saalbach, Austria, with the village lights below](/assets/saalbach-night-skiing-2.jpg)
 _Night skiing in Saalbach_
 
-And of course I love French Alps, Bonjour!
+And of course I love the French Alps, Bonjour!
 Chamonix offers a really wide range of pistes, and the place itself is quite pretty!
 
 ![The Aiguille du Midi peak station in Chamonix, France, rising above the clouds](/assets/aiguille-du-midi-chamonix.jpg)
@@ -109,7 +114,7 @@ Something I found very deep in Finnish culture is the level of trust in people a
 ## What's next
 
 Hoping to explore the [Polar Night Light Festival, Finland](https://www.ruka.fi/en/events/polar-night-light-festival). I've never tried off-piste skiing and hope to try it soon. Along with that,
-I'd be very keen to try the Vallée Blanche in Chamonix, France, a legendary 15 to 20 km off-piste glacier ski descent. It starts at the 3,842 m peak of the Aiguille du Midi cable car and drops roughly 2,000 vertical meters through breathtaking high-alpine glacial terrain. And if I'm ever able to make some fortune, a one-time heli-skiing trip with the [Viking Heliskiing, Iceland](https://www.youtube.com/watch?v=H4QTWfBCXw8) crew is definitely on the list, albeit unlikely, alas.
+I'd be very keen to try [the Vallée Blanche in Chamonix, France](https://guides-mont-blanc.com/en/activites/vallee-blanche/?jsf=jet-engine:query_voyages&tax=themes_voyage:65), a legendary 15 to 20 km off-piste glacier ski descent. It starts at the 3,842 m peak of the Aiguille du Midi cable car and drops roughly 2,000 vertical meters through breathtaking high-alpine glacial terrain. And if I'm ever able to make some fortune, a one-time heli-skiing trip with the [Viking Heliskiing, Iceland](https://www.youtube.com/watch?v=H4QTWfBCXw8) crew is definitely on the list, albeit unlikely, alas.
 
 With all this, this has also been the first time I've followed an entire Winter Olympics, 2026, thoroughly enjoying everything from figure skating to all the skiing and snowboarding competitions. Someday I'd love to see the Olympics in person.
 
