@@ -29,3 +29,117 @@ img.mermaid {
   letter-spacing: 0.04em;
   color: #151414;
 }
+
+// Automatic dark mode, following the reader's OS/browser setting.
+// Minima 2.5 has no built-in dark skin, so this re-themes its fixed
+// colors (body, chrome, code blocks, tables, syntax highlighting)
+// rather than relying on theme variables, which are compiled away.
+@media (prefers-color-scheme: dark) {
+  $dark-background: #181a1b;
+  $dark-text: #e8e6e3;
+  $dark-brand: #6ab0f3;
+  $dark-grey: #9a9a9a;
+  $dark-grey-light: #3a3d3f;
+  $dark-grey-dark: #c7c7c7;
+  $dark-code-bg: #24282a;
+
+  body {
+    color: $dark-text;
+    background-color: $dark-background;
+  }
+
+  a {
+    color: $dark-brand;
+
+    &:visited {
+      color: lighten($dark-brand, 10%);
+    }
+
+    &:hover {
+      color: $dark-text;
+    }
+  }
+
+  blockquote {
+    color: $dark-grey;
+    border-left-color: $dark-grey-light;
+  }
+
+  pre,
+  code {
+    border-color: $dark-grey-light;
+    background-color: $dark-code-bg;
+  }
+
+  .highlight {
+    background: $dark-code-bg;
+
+    .highlighter-rouge & {
+      background: $dark-code-bg;
+    }
+  }
+
+  table {
+    color: $dark-text;
+    border-color: $dark-grey-light;
+
+    tr:nth-child(even) {
+      background-color: darken($dark-grey-light, 6%);
+    }
+
+    th {
+      background-color: darken($dark-grey-light, 3%);
+      border-color: $dark-grey-light;
+    }
+
+    td {
+      border-color: $dark-grey-light;
+    }
+  }
+
+  .site-header {
+    border-top-color: $dark-grey-dark;
+    border-bottom-color: $dark-grey-light;
+  }
+
+  .site-title,
+  .site-title:visited {
+    color: $dark-grey-dark;
+  }
+
+  .site-nav {
+    .page-link {
+      color: $dark-text;
+    }
+
+    @media screen and (max-width: 600px) {
+      background-color: $dark-background;
+      border-color: $dark-grey-light;
+
+      .menu-icon > svg {
+        fill: $dark-grey-dark;
+      }
+    }
+  }
+
+  .site-footer {
+    border-top-color: $dark-grey-light;
+  }
+
+  .footer-col-wrapper {
+    color: $dark-grey;
+  }
+
+  .post-meta {
+    color: $dark-grey;
+  }
+
+  .svg-icon {
+    fill: $dark-grey;
+  }
+
+  .post-content h5,
+  .post-content h6 {
+    color: $dark-text;
+  }
+}
