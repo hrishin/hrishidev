@@ -110,6 +110,8 @@ Something I found very deep in Finnish culture is the level of trust in people a
 Hoping to explore the [Polar Night Light Festival, Finland](https://www.ruka.fi/en/events/polar-night-light-festival). I've never tried off-piste skiing and hope to try it soon. Along with that,
 I'd be very keen to try the Vallée Blanche in Chamonix, France, a legendary 15 to 20 km off-piste glacier ski descent. It starts at the 3,842 m peak of the Aiguille du Midi cable car and drops roughly 2,000 vertical meters through breathtaking high-alpine glacial terrain.
 
+With all this, this has also been the first time I've followed an entire Winter Olympics, 2026, thoroughly enjoying everything from figure skating to all the skiing and snowboarding competitions. Someday I'd love to see the Olympics in person.
+
 At last, I hope life keeps skiing as exciting as I'm writing about it, some of the love for sports I've rediscovered, bruises and all.
 
 ![Lying flat on a snowy slope after a fall, with two people looking on in the background](/assets/loose-cannon-fall.jpg)
