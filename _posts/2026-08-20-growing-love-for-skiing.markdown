@@ -14,21 +14,23 @@ Usually I don't share personal things. Turns out all it took to change my mind w
 ## How it started
 
 Before even saying how it started, I should say that looking back at my childhood and teenage years, I always wanted to
-become some sort of sportsman or athlete; becoming a software engineer was never the plan. I used to dismantle all sorts of electronics and mechanical things, sometimes putting them back together and sometimes producing what could generously be called abstract sculpture, which cost my parents a lot of money in replacements.
+become some sort of sportsman or athlete; becoming a software engineer was never the plan. (I used to dismantle all sorts of electronics and mechanical things, sometimes putting them back together and sometimes producing what could generously be called abstract sculpture, which cost my parents some fortune in replacements, apparently curious what led me where I'm today).
 I was a competitive sportsman growing up and never imagined my life without sports. There
-used to be a time when I'd be on the playground as early as 5am and still standing there at 10pm, which, looking back, was either discipline or an early symptom of an addiction. It was
-consistently like that. Every day I used to dream about sports.
+used to be a time when I'd be on the playground as early as 5am and still last person standing and practicing there at 10pm, which, looking back, was either discipline or an early 
+symptom of an addiction. It was consistently like that. Every day I used to dream about sports. Growing up in India it was mostly about Cricket, but among others
+I did well enough in Bandminton, Swimming, Skating, Volleyball, Cycling and Football.
 
-Down the line life happens, and I left sports completely, like flipping a kill switch, around my late teens. RIP athletic career, gone but not forgotten.
+Down the line life happens, and I left sports completely, like flipping a kill switch, around my late teens. RIP athletic career.., gone but not forgotten.
 
 After almost 20 years, at the age of 36, I happened to join a company where everyone seemed quite passionate about some sort of sport, which was mildly alarming for someone whose most recent sport was competitive sitting. In April 2023 I was on a road trip through the Scandinavian nations, and while passing
 through Hemsedal in Norway, I stopped randomly at a ski resort. My friends and I, dressed for the occasion in pajamas and sneakers because we hadn't planned this at all, were standing by the ski lift when a generous lady offered us a free ride up, possibly out of kindness, possibly because we looked like lunatics.
 
 ![Standing in pajamas and sneakers on a snowy deck in Hemsedal, Norway, with mountains in the background](/assets/hemsedal-norway-pajamas-ski-lift.jpg)
-Standing there watching people of
-all ages (kids, teens, adults, and whole families), I felt like I'd want to give it a try someday.
+_Pretending to smile after falling off on the ramp, thanks to my sneakers_
 
-Fast forward, my former workplace DRW arranged an office skiing trip to Morzine, France in April 2024. I thought of signing up
+But standing there watching people of all ages (kids, teens, adults, and whole families), I felt quite like I'd want to give it a try someday.
+
+Fast forward, my former workplace DRW arranged an office skiing trip to Morzine, France in the March 2024. I thought of signing up
 for it, despite a few colleagues warning me that breaking my bones was quite probable, which in hindsight was less a warning and more a professional forecast. Finally I took
 a leap of faith and started getting myself ready for the skiing trip.
 My colleagues seemed like experts, and I wanted to make sure I'd be able to keep up. So I took
@@ -37,6 +39,7 @@ After roughly 18-20 hours of lessons I thought I was ready to conquer the slopes
 are just out there to prove you wrong, gravity included, and hell yeah, I was nowhere close to what I'd been imagining and
 would need to keep up with friends while skiing. But after that one skiing trip I felt I'd learned something new,
 and I think it was an unconscious reminder for me: learning a new sport gives you the confidence that you could do something worthwhile you've never done before in life. I came back with pretty much mesmerising experiences, some fond memories, and a new nickname (I've been labeled a loose cannon by a colleague ever since, a title I've chosen to wear with pride, mostly because the alternatives suggested were worse.)
+> **Note:** In between all this skiing, I also made it to KubeCon EU Paris 2024, because apparently the adventures never stop. A good friend of mine presented a talk on Confidential Containers (CoCo): [https://www.youtube.com/watch?v=Ko0o5_hpmxI](https://www.youtube.com/watch?v=Ko0o5_hpmxI)
 
 ![A group photo on a sunny ski deck in Morzine, France, with everyone holding drinks](/assets/morzine-apres-ski-group.jpg)
 
