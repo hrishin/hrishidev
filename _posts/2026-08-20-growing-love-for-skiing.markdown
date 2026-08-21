@@ -43,9 +43,6 @@ life. I came back with pretty much mesmerizing experiences, some fond memories, 
 a title I've chosen to wear with pride, mostly because the alternatives suggested were worse.)
 > **Note:** In between all this skiing, I also made it to KubeCon EU Paris 2024, because apparently the adventures never stop. A good friend of mine presented a talk on Confidential Containers (CoCo): [https://www.youtube.com/watch?v=Ko0o5_hpmxI](https://www.youtube.com/watch?v=Ko0o5_hpmxI)
 
-![A group photo on a sunny ski deck in Morzine, France, with everyone holding drinks](/assets/morzine-apres-ski-group.jpg)
-
-
 ![A view of snow-capped mountains and ski slopes from a piste in Morzine, France](/assets/morzine-mountain-view.jpg)
 
 ## What keeps pulling me back
