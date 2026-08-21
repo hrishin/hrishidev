@@ -115,7 +115,7 @@ I'd be very keen to try [the Vallée Blanche in Chamonix, France](https://guides
 
 With all this, this has also been the first time I've followed an entire Winter Olympics, 2026, thoroughly enjoying everything from figure skating to all the skiing and snowboarding competitions. Someday I'd love to see the Olympics in person.
 
-For this one reason, I owe a big thank you to my former workplace and colleagues at DRW, for reintroducing me to my love for skiing, table tennis, and cycling.
+For this, I owe a big thank you to my former colleagues, who reintroduced me to my love for sports through skiing, ping pong, and cycling.
 
 At last, I hope life keeps skiing as exciting as I'm writing about it, some of the love for sports I've rediscovered, bruises and all.
 
