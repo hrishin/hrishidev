@@ -64,7 +64,7 @@ The thing I like about skiing is that it's a family sport. Everyone seems to enj
 something to offer for everyone in the family (at least, enough to make some good memories, and possibly a few good stories about someone else falling over).
 
 Of course, something that goes against my nature: yes, I eventually found a love of Après-ski, where people are in a
-celebratory mood and there's real joy, plus questionable dancing on tables that I will neither confirm nor deny participating in. So far my favorite has been [Mooserwirt](https://www.mooserwirt.at/en/) in St. Anton.
+celebratory mood and there's real joy, plus questionable dancing on tables that I will neither confirm nor deny participating in. So far my favorite has been [Mooserwirt](https://www.mooserwirt.at/en/) in St. Anton, which is a true test of your real skiing, snowboarding, and snowballing skills on the way down after the après-ski party (this is where I really learned how to get back up on skis on a slope, since pretty much everyone passing by fell over too).
 
 At last, wherever you go for skiing, it's one of those things where people are generally welcoming, warm, and
 share true hospitality, even to a guy who once showed up to a ski lift in pajamas.
