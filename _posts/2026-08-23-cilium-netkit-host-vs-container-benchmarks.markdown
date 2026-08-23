@@ -13,7 +13,7 @@ netkit, for anyone new to it: a Linux kernel network device type, merged into ma
 
 A self-managed Kubernetes cluster on a small cloud VM instance type throughout (4 vCPUs, ~8GB RAM, ~8GB disk per node, Ubuntu 26.04 LTS, kernel 7.0.0-14-generic), Cilium in **native routing** mode (no VXLAN, no encapsulation overhead) with `bpf.datapathMode=netkit` and `loadBalancer.mode=dsr`. Every test below runs the *same binary* two ways: as a **bare Linux process** on the node (a normal `systemd`-managed process in the node's own network namespace, no container, no CNI, no `netkit` in the path at all) and as a **container behind Cilium's `netkit` device**, the same node, the same kernel, just routed through Cilium's datapath instead of a plain socket. "Bare host" here means bare of any container runtime and CNI, not bare-metal hardware: every node is a cloud VM, so both sides of every comparison share the same hypervisor-level virtualization; the variable under test is strictly the Linux networking path from that point down, host netns vs. `netkit`. No test ever uses `hostNetwork: true` to fake that comparison. Where a test involves two nodes, the host side talks over the cloud provider's private network and the container side talks over Cilium's pod network, both real, both production-shaped.
 
-Two cluster shapes appear in this post, same instance type, different split. HTTP, Redis, and north-south ran on 3 control-plane + 2 workers (5 nodes). The quorum-based results (etcd, PostgreSQL, Kafka) and the MPI ping-pong lead with numbers from a **rebuilt 1 control-plane + 3 worker** cluster (4 nodes): a 2-node "quorum" is degenerate (majority of 2 is 2, so it's actually unanimity, not a majority vote), and real quorum-based systems don't run that way in production; MPI's re-run there isn't a quorum result, but it reuses the same 3-worker layout to isolate the Slurm controller (`worker-01`) from the two nodes actually carrying MPI traffic. Getting a genuine 3-of-3-worker majority meant trading two control-plane nodes for one extra worker, since the control-plane doesn't need HA for anything measured here.
+One cluster ran every test in this post: 1 control-plane node plus 3 workers (4 nodes total), same instance type throughout. The control-plane node doubles as the north-south client for the one test that needs an external caller; the three workers carry every host-vs-container comparison, including the quorum-based tests (etcd, PostgreSQL, Kafka) and the MPI ping-pong, which needs all three to isolate the Slurm controller (`worker-01`) from the two nodes actually carrying MPI traffic.
 
 ```mermaid!
 graph TD
@@ -30,7 +30,7 @@ graph TD
     W1 <==> W3
 ```
 
-Every quorum result compares the same three workers: a bare Linux process on each versus a netkit-backed pod on each, never a mix. The earlier 3-control-plane + 2-worker shape (referenced for HTTP, Redis, and north-south, and for the 2-node numbers shown alongside each 3-node quorum result below) followed the identical rule, just with `worker-01`/`worker-02` only. MPI is the one non-quorum test that also moved to the 3-worker shape, for the isolation reason noted above, not because of quorum semantics.
+Every quorum result compares the same three workers: a bare Linux process on each versus a netkit-backed pod on each, never a mix.
 
 Almost everything below is **east-west** traffic: pod-to-pod (or host-to-host) inside the cluster, the shape most inter-service and database traffic actually takes. There's one **north-south** data point too: an external client (`control-plane-01`, itself a plain host, no Kubernetes networking on its own side) hitting the worker directly for the host case, and hitting the same worker's Service `ClusterIP` (resolved via Cilium's host-reachable-services, an eBPF hook at the client's own socket layer, no `kube-proxy` involved) for the container case. Worth keeping separate: it's a different traffic shape from the paired host-vs-host / pod-vs-pod comparisons everywhere else in this post.
 
@@ -121,13 +121,13 @@ Worth being precise about what Isovalent's own numbers actually claim, though: t
 A 3-node etcd Raft cluster (the real quorum shape, 2-of-3 majority) showed the same underlying mechanism: a quorum-committing `PUT` sends `AppendEntries` to two followers and waits for the faster one to ack: trivial per-request CPU work, cost dominated by dispatch.
 
 <figure class="blog-chart">
-<svg viewBox="0 0 560 380" style="max-width: 100%; height: auto; font-family: 'Inter', system-ui, sans-serif; --chart-muted: #4b5563;" role="img" aria-labelledby="etcd-raft-commit-latency-2-node-vs-3-node-quorum-ms-title etcd-raft-commit-latency-2-node-vs-3-node-quorum-ms-desc">
+<svg viewBox="0 0 560 380" style="max-width: 100%; height: auto; font-family: 'Inter', system-ui, sans-serif; --chart-muted: #4b5563;" role="img" aria-labelledby="etcd-raft-commit-latency-ms-title etcd-raft-commit-latency-ms-desc">
   <style>
     @media (prefers-color-scheme: dark) { svg { --chart-muted: #d1d5db; } }
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
   </style>
-  <title id="etcd-raft-commit-latency-2-node-vs-3-node-quorum-ms-title">etcd Raft commit latency (ms)</title>
-  <desc id="etcd-raft-commit-latency-2-node-vs-3-node-quorum-ms-desc">etcd Raft commit latency (ms). grouped bar data: 3-node: Host 18.4, Container 12.44; 2-node (reference, degenerate unanimity): Host 16.8, Container 12.58.Source: Author benchmark, 100 sequential quorum-committing PUTs, 2026 .</desc>
+  <title id="etcd-raft-commit-latency-ms-title">etcd Raft commit latency (ms)</title>
+  <desc id="etcd-raft-commit-latency-ms-desc">etcd Raft commit latency (ms). grouped bar data: Host 18.4, Container 12.44.Source: Author benchmark, 100 sequential quorum-committing PUTs, 2026 .</desc>
   <text x="280.0" y="29" text-anchor="middle" font-size="18" font-weight="800" fill="currentColor">etcd Raft commit latency (ms)</text>
 
   <line x1="72" y1="277.0" x2="492" y2="277.0" stroke="currentColor" opacity="0.08" />
@@ -139,21 +139,16 @@ A 3-node etcd Raft cluster (the real quorum shape, 2-of-3 majority) showed the s
 <text x="87" y="71" font-size="11" fill="currentColor">Host</text>
 <rect x="177" y="62" width="10" height="10" fill="#38bdf8" />
 <text x="192" y="71" font-size="11" fill="currentColor">Container</text>
-<rect x="159.0" y="92.0" width="16.0" height="185.0" fill="#f97316" />
-<text x="167.0" y="88.0" text-anchor="middle" font-size="9" fill="currentColor">18.40</text>
-<rect x="177.0" y="151.9" width="16.0" height="125.1" fill="#38bdf8" />
-<text x="185.0" y="147.9" text-anchor="middle" font-size="9" fill="currentColor">12.44</text>
-<text x="177.0" y="295.0" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8"><tspan x="177.0" dy="0">3-node</tspan></text>
-<rect x="369.0" y="108.1" width="16.0" height="168.9" fill="#f97316" />
-<text x="377.0" y="104.1" text-anchor="middle" font-size="9" fill="currentColor">16.80</text>
-<rect x="387.0" y="150.5" width="16.0" height="126.5" fill="#38bdf8" />
-<text x="395.0" y="146.5" text-anchor="middle" font-size="9" fill="currentColor">12.58</text>
-<text x="387.0" y="295.0" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8"><tspan x="387.0" dy="0">2-node (ref.)</tspan></text>
+<rect x="264.0" y="92.0" width="16.0" height="185.0" fill="#f97316" />
+<text x="272.0" y="88.0" text-anchor="middle" font-size="10" fill="currentColor">18.40</text>
+<rect x="282.0" y="152.0" width="16.0" height="125.0" fill="#38bdf8" />
+<text x="290.0" y="148.0" text-anchor="middle" font-size="10" fill="currentColor">12.44</text>
+<text x="282.0" y="295.0" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8"><tspan x="282.0" dy="0">Quorum commit</tspan></text>
   <text x="280.0" y="366" text-anchor="middle" font-size="10" fill="var(--chart-muted, currentColor)">Source: Author benchmark, 100 sequential quorum-committing PUTs, 2026</text>
 </svg>
 </figure>
 
-Container: 12.44ms average. Host: 18.40ms. **1.48x**, same dispatch-cost mechanism as `wrk`. The 2-node number alongside it isn't a second valid data point, it's what the same test showed before it was actually testing a majority vote: at 2 nodes "quorum" means both nodes must ack, so the leader isn't relaxing anything by only needing 2-of-3. Worth noting the direction: the host got *slower* at 3 nodes (16.80ms to 18.40ms), not faster, because the leader now fans out `AppendEntries` to two followers instead of one, and that extra packet's dispatch cost lands harder on the host's more expensive per-packet path. The container barely moved.
+Container: 12.44ms average. Host: 18.40ms. **1.48x**, same dispatch-cost mechanism as `wrk`. The leader fans `AppendEntries` out to two followers and waits for the faster ack; that extra dispatch work lands harder on the host's more expensive per-packet path than on the container's, which barely moves.
 
 The north-south data point is the odd one out, and worth stating plainly rather than forcing it into the concurrency story: 30 *serial* plain-HTTP requests from `control-plane-01`, no DNS, no TLS, one at a time, and the container path still won, 1.379ms average versus 1.894ms for the host, ~27% lower, with zero concurrency in play. That doesn't fit "needs concurrent load" the way the MPI result later in this post does, and I'm not claiming it does. The likely reason is architectural, not load-related: the container path here goes through a single cheap eBPF socket-layer redirect on the *client's own kernel*, not a full pod-to-pod round trip, a different mechanism from the "many requests queued on a netkit device" story above. Filed as a real result, not a proven mechanism.
 
@@ -196,7 +191,7 @@ Redis, `-c 20 -n 100000`:
 
 Host ahead by 11-19% (SET 39,017 vs 35,174, GET 38,447 vs 32,248). Redis's single-threaded command loop is the bottleneck here, not the network: one core processes `SET`/`GET` sequentially no matter which datapath delivered the packet, so netkit's CPU saving has nothing to attach to. Whatever small overhead the container path adds on top now shows through directly as lost throughput, instead of being hidden behind a bigger saving elsewhere.
 
-PostgreSQL tells the same story, with a twist. Standalone `pgbench` (async commit, scale factor 2; TPC-B row-locks a single `pgbench_branches`/`pgbench_tellers` row per transaction, a server-side serialization bottleneck), 2-node cluster since standalone throughput isn't a quorum operation and cluster size doesn't apply to it:
+PostgreSQL tells the same story, with a twist. Standalone `pgbench` (async commit, scale factor 2; TPC-B row-locks a single `pgbench_branches`/`pgbench_tellers` row per transaction, a server-side serialization bottleneck):
 
 <figure class="blog-chart">
 <svg viewBox="0 0 560 380" style="max-width: 100%; height: auto; font-family: 'Inter', system-ui, sans-serif; --chart-muted: #4b5563;" role="img" aria-labelledby="postgresql-throughput-standalone-vs-sync-replication-tps-title postgresql-throughput-standalone-vs-sync-replication-tps-desc">
@@ -204,9 +199,9 @@ PostgreSQL tells the same story, with a twist. Standalone `pgbench` (async commi
     @media (prefers-color-scheme: dark) { svg { --chart-muted: #d1d5db; } }
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
   </style>
-  <title id="postgresql-throughput-standalone-vs-sync-replication-tps-title">PostgreSQL 2-node throughput (TPS)</title>
-  <desc id="postgresql-throughput-standalone-vs-sync-replication-tps-desc">PostgreSQL 2-node throughput, standalone vs sync replication (TPS). grouped bar data: Standalone: Host 739.4, Container 572.3; Sync replication: Host 579.8, Container 568.6.Source: Author benchmark, pgbench -c 20 -T 30, 2026 .</desc>
-  <text x="280.0" y="29" text-anchor="middle" font-size="18" font-weight="800" fill="currentColor">PostgreSQL 2-node throughput (TPS)</text>
+  <title id="postgresql-throughput-standalone-vs-sync-replication-tps-title">PostgreSQL throughput: standalone vs sync replication (TPS)</title>
+  <desc id="postgresql-throughput-standalone-vs-sync-replication-tps-desc">PostgreSQL throughput, standalone vs sync replication (TPS). grouped bar data: Standalone: Host 739.4, Container 572.3; Sync replication: Host 579.8, Container 568.6.Source: Author benchmark, pgbench -c 20 -T 30, 2026 .</desc>
+  <text x="280.0" y="29" text-anchor="middle" font-size="18" font-weight="800" fill="currentColor">PostgreSQL throughput: standalone vs sync replication (TPS)</text>
 
   <line x1="72" y1="277.0" x2="492" y2="277.0" stroke="currentColor" opacity="0.08" />
 <line x1="72" y1="230.8" x2="492" y2="230.8" stroke="currentColor" opacity="0.08" />
@@ -231,7 +226,7 @@ PostgreSQL tells the same story, with a twist. Standalone `pgbench` (async commi
 </svg>
 </figure>
 
-Standalone: host ahead 29% (739 vs 572 TPS), same lock-contention story as Redis. That part doesn't involve a quorum vote at all, so cluster size doesn't change it. Turning synchronous replication on does, and this is where cluster size matters: `synchronous_standby_names = 'ANY 1 (standby2, standby3)'` on a real 3-node cluster (primary plus two standbys) waits for whichever standby acks first, not the one-and-only standby a 2-node setup is stuck with. That's the shape a production quorum-commit deployment actually runs.
+Standalone: host ahead 29% (739 vs 572 TPS), same lock-contention story as Redis, no replication involved. Turning synchronous replication on changes the picture: `synchronous_standby_names = 'ANY 1 (standby2, standby3)'` (primary plus two standbys) waits for whichever standby acks first, the shape a production quorum-commit deployment actually runs.
 
 <figure class="blog-chart">
 <svg viewBox="0 0 560 380" style="max-width: 100%; height: auto; font-family: 'Inter', system-ui, sans-serif; --chart-muted: #4b5563;" role="img" aria-labelledby="postgresql-marginal-cost-of-synchronous-replication-title postgresql-marginal-cost-of-synchronous-replication-desc">
@@ -240,7 +235,7 @@ Standalone: host ahead 29% (739 vs 572 TPS), same lock-contention story as Redis
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
   </style>
   <title id="postgresql-marginal-cost-of-synchronous-replication-title">PostgreSQL: cost of sync replication (%)</title>
-  <desc id="postgresql-marginal-cost-of-synchronous-replication-desc">PostgreSQL: cost of sync replication (%). grouped bar data: 3-node: Host 0.5, Container 2.7; 2-node (reference, degenerate unanimity): Host 21.6, Container 0.6.Source: Author benchmark, pgbench -c 20 -T 30, standalone vs sync-commit throughput delta, 2026 .</desc>
+  <desc id="postgresql-marginal-cost-of-synchronous-replication-desc">PostgreSQL: cost of sync replication (%). grouped bar data: Host 0.5, Container 2.7.Source: Author benchmark, pgbench -c 20 -T 30, standalone vs sync-commit throughput delta, 2026 .</desc>
   <text x="280.0" y="29" text-anchor="middle" font-size="18" font-weight="800" fill="currentColor">PostgreSQL: cost of sync replication (%)</text>
 
   <line x1="72" y1="277.0" x2="492" y2="277.0" stroke="currentColor" opacity="0.08" />
@@ -252,23 +247,18 @@ Standalone: host ahead 29% (739 vs 572 TPS), same lock-contention story as Redis
 <text x="87" y="71" font-size="11" fill="currentColor">Host</text>
 <rect x="177" y="62" width="10" height="10" fill="#38bdf8" />
 <text x="192" y="71" font-size="11" fill="currentColor">Container</text>
-<rect x="159.0" y="272.7" width="16.0" height="4.3" fill="#f97316" />
-<text x="167.0" y="268.7" text-anchor="middle" font-size="9" fill="currentColor">0.5%</text>
-<rect x="177.0" y="253.9" width="16.0" height="23.1" fill="#38bdf8" />
-<text x="185.0" y="249.9" text-anchor="middle" font-size="9" fill="currentColor">2.7%</text>
-<text x="177.0" y="295.0" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8"><tspan x="177.0" dy="0">3-node</tspan></text>
-<rect x="369.0" y="92.0" width="16.0" height="185.0" fill="#f97316" />
-<text x="377.0" y="88.0" text-anchor="middle" font-size="9" fill="currentColor">21.6%</text>
-<rect x="387.0" y="271.9" width="16.0" height="5.1" fill="#38bdf8" />
-<text x="395.0" y="267.9" text-anchor="middle" font-size="9" fill="currentColor">0.6%</text>
-<text x="387.0" y="295.0" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8"><tspan x="387.0" dy="0">2-node (ref.)</tspan></text>
+<rect x="264.0" y="242.7" width="16.0" height="34.3" fill="#f97316" />
+<text x="272.0" y="238.7" text-anchor="middle" font-size="10" fill="currentColor">0.5%</text>
+<rect x="282.0" y="92.0" width="16.0" height="185.0" fill="#38bdf8" />
+<text x="290.0" y="88.0" text-anchor="middle" font-size="10" fill="currentColor">2.7%</text>
+<text x="282.0" y="295.0" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8"><tspan x="282.0" dy="0">Cost of sync</tspan></text>
   <text x="280.0" y="366" text-anchor="middle" font-size="10" fill="var(--chart-muted, currentColor)">Source: Author benchmark, pgbench -c 20 -T 30, standalone vs sync-commit throughput delta, 2026</text>
 </svg>
 </figure>
 
-At a real quorum, turning synchronous replication on cost the host **0.5%** throughput. Essentially free. The 2-node reference bar (21.6%) isn't a smaller version of the same fact, it's a different regime entirely: at 2 nodes there's no majority to wait for, only unanimity, so every commit pays the full round-trip cost with no faster-of-two option. The container's marginal cost stayed near zero either way (0.6% at 2 nodes, 2.7% at 3), because its per-packet dispatch cost was already cheap enough that a full round trip barely registered in the first place. Sequential commit latency (confound-controlled, same Alpine/musl `psql` client both sides) tells the same story at smaller scale: container 14.24ms vs host 20.86ms at 3 nodes, a 1.46x gap, down from 1.61x at 2 nodes as the host caught up.
+Turning synchronous replication on cost the host **0.5%** throughput. Essentially free: with a real majority to wait for, the leader races the faster of two standbys instead of paying a full round trip every time. The container's marginal cost was higher in relative terms (2.7%), though still small in absolute terms, because its per-packet dispatch cost was already cheap enough that a full round trip barely registered in the first place. Sequential commit latency (confound-controlled, same Alpine/musl `psql` client both sides) tells the same story at smaller scale: container 14.24ms vs host 20.86ms, a 1.46x gap.
 
-## Kafka: the exception that isn't
+## Kafka: pull-based replication favors the host
 
 Same "wait for the other replica" shape as Raft and Postgres, on paper. Kafka answered differently:
 
@@ -279,7 +269,7 @@ Same "wait for the other replica" shape as Raft and Postgres, on paper. Kafka an
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
   </style>
   <title id="kafka-produce-latency-leader-ack-vs-quorum-write-ms-title">Kafka produce latency: leader-ack vs quorum write (ms)</title>
-  <desc id="kafka-produce-latency-leader-ack-vs-quorum-write-ms-desc">Kafka produce latency: leader-ack vs quorum write (ms). grouped bar data: acks=1: Host 40.26, Container 25.55; acks=all: Host 259.9, Container 350.11.Source: Author benchmark, kafka-producer-perf-test, 2026 .</desc>
+  <desc id="kafka-produce-latency-leader-ack-vs-quorum-write-ms-desc">Kafka produce latency: leader-ack vs quorum write (ms). grouped bar data: acks=1: Host 40.26, Container 69.08; acks=all: Host 98.75, Container 374.39.Source: Author benchmark, kafka-producer-perf-test, 2026 .</desc>
   <text x="280.0" y="29" text-anchor="middle" font-size="18" font-weight="800" fill="currentColor">Kafka produce latency: leader-ack vs quorum write (ms)</text>
 
   <line x1="72" y1="277.0" x2="492" y2="277.0" stroke="currentColor" opacity="0.08" />
@@ -291,58 +281,23 @@ Same "wait for the other replica" shape as Raft and Postgres, on paper. Kafka an
 <text x="87" y="71" font-size="11" fill="currentColor">Host</text>
 <rect x="177" y="62" width="10" height="10" fill="#38bdf8" />
 <text x="192" y="71" font-size="11" fill="currentColor">Container</text>
-<rect x="159.0" y="255.7" width="16.0" height="21.3" fill="#f97316" />
-<text x="167.0" y="251.7" text-anchor="middle" font-size="9" fill="currentColor">40.3</text>
-<rect x="177.0" y="263.5" width="16.0" height="13.5" fill="#38bdf8" />
-<text x="185.0" y="259.5" text-anchor="middle" font-size="9" fill="currentColor">25.6</text>
+<rect x="159.0" y="169.2" width="16.0" height="107.8" fill="#f97316" />
+<text x="167.0" y="165.2" text-anchor="middle" font-size="9" fill="currentColor">40.3</text>
+<rect x="177.0" y="92.0" width="16.0" height="185.0" fill="#38bdf8" />
+<text x="185.0" y="88.0" text-anchor="middle" font-size="9" fill="currentColor">69.1</text>
 <text x="177.0" y="295.0" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8"><tspan x="177.0" dy="0">acks=1</tspan></text>
-<rect x="369.0" y="139.7" width="16.0" height="137.3" fill="#f97316" />
-<text x="377.0" y="135.7" text-anchor="middle" font-size="9" fill="currentColor">259.9</text>
+<rect x="369.0" y="228.2" width="16.0" height="48.8" fill="#f97316" />
+<text x="377.0" y="224.2" text-anchor="middle" font-size="9" fill="currentColor">98.75</text>
 <rect x="387.0" y="92.0" width="16.0" height="185.0" fill="#38bdf8" />
-<text x="395.0" y="88.0" text-anchor="middle" font-size="9" fill="currentColor">350.1</text>
+<text x="395.0" y="88.0" text-anchor="middle" font-size="9" fill="currentColor">374.4</text>
 <text x="387.0" y="295.0" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8"><tspan x="387.0" dy="0">acks=all</tspan></text>
   <text x="280.0" y="366" text-anchor="middle" font-size="10" fill="var(--chart-muted, currentColor)">Source: Author benchmark, kafka-producer-perf-test, 2026</text>
 </svg>
 </figure>
 
-`acks=1` (leader-ack only, not a quorum vote, so cluster size shouldn't matter here) fits the pattern: container 1.6x faster at 2 nodes. `acks=all` + `min.insync.replicas=2` is the genuine quorum write, and that's the number worth getting from the real 3-node majority rather than the 2-node degenerate case:
+Host wins both modes. `acks=all` + `min.insync.replicas=2` is the genuine quorum write, and there the host wins by nearly 4x (98.75ms vs 374.39ms). The likely reason: Raft's `AppendEntries` and Postgres's WAL streaming are the leader *pushing* to a follower and waiting for one ack, a single dispatch round trip. Kafka's followers instead run a continuous *fetch* loop against the leader (`replica.fetch.wait.max.ms`, default 500ms); `acks=all` completion depends on that poll loop noticing the new record, not a dedicated round trip triggered by the write, a fixed poll-cycle cost that dispatch efficiency doesn't touch. Not independently confirmed with the same CPU-profiling rigor as the `wrk` result, so I'm stating it as the likely mechanism, not a proven one.
 
-<figure class="blog-chart">
-<svg viewBox="0 0 560 380" style="max-width: 100%; height: auto; font-family: 'Inter', system-ui, sans-serif; --chart-muted: #4b5563;" role="img" aria-labelledby="kafka-acks-all-latency-2-node-vs-3-node-quorum-ms-title kafka-acks-all-latency-2-node-vs-3-node-quorum-ms-desc">
-  <style>
-    @media (prefers-color-scheme: dark) { svg { --chart-muted: #d1d5db; } }
-    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
-  </style>
-  <title id="kafka-acks-all-latency-2-node-vs-3-node-quorum-ms-title">Kafka acks=all latency (ms)</title>
-  <desc id="kafka-acks-all-latency-2-node-vs-3-node-quorum-ms-desc">Kafka acks=all latency (ms). grouped bar data: 3-node: Host 98.75, Container 374.39; 2-node (reference, degenerate unanimity): Host 259.9, Container 350.11.Source: Author benchmark, kafka-producer-perf-test acks=all, min.insync.replicas=2, 2026 .</desc>
-  <text x="280.0" y="29" text-anchor="middle" font-size="18" font-weight="800" fill="currentColor">Kafka acks=all latency (ms)</text>
-
-  <line x1="72" y1="277.0" x2="492" y2="277.0" stroke="currentColor" opacity="0.08" />
-<line x1="72" y1="230.8" x2="492" y2="230.8" stroke="currentColor" opacity="0.08" />
-<line x1="72" y1="184.5" x2="492" y2="184.5" stroke="currentColor" opacity="0.08" />
-<line x1="72" y1="138.2" x2="492" y2="138.2" stroke="currentColor" opacity="0.08" />
-<line x1="72" y1="92.0" x2="492" y2="92.0" stroke="currentColor" opacity="0.08" />
-<rect x="72" y="62" width="10" height="10" fill="#f97316" />
-<text x="87" y="71" font-size="11" fill="currentColor">Host</text>
-<rect x="177" y="62" width="10" height="10" fill="#38bdf8" />
-<text x="192" y="71" font-size="11" fill="currentColor">Container</text>
-<rect x="159.0" y="228.2" width="16.0" height="48.8" fill="#f97316" />
-<text x="167.0" y="224.2" text-anchor="middle" font-size="9" fill="currentColor">98.75</text>
-<rect x="177.0" y="92.0" width="16.0" height="185.0" fill="#38bdf8" />
-<text x="185.0" y="88.0" text-anchor="middle" font-size="9" fill="currentColor">374.4</text>
-<text x="177.0" y="295.0" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8"><tspan x="177.0" dy="0">3-node</tspan></text>
-<rect x="369.0" y="148.6" width="16.0" height="128.4" fill="#f97316" />
-<text x="377.0" y="144.6" text-anchor="middle" font-size="9" fill="currentColor">259.9</text>
-<rect x="387.0" y="104.0" width="16.0" height="173.0" fill="#38bdf8" />
-<text x="395.0" y="100.0" text-anchor="middle" font-size="9" fill="currentColor">350.1</text>
-<text x="387.0" y="295.0" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8"><tspan x="387.0" dy="0">2-node (ref.)</tspan></text>
-  <text x="280.0" y="366" text-anchor="middle" font-size="10" fill="var(--chart-muted, currentColor)">Source: Author benchmark, kafka-producer-perf-test acks=all, min.insync.replicas=2, 2026</text>
-</svg>
-</figure>
-
-At a real 3-node quorum, host `acks=all` latency dropped by more than half versus the 2-node reference (259.90ms to 98.75ms): the cleanest confirmation in this whole post of "race the faster of two independent followers instead of waiting on the only one." The likely reason it shows up here at all: Raft's `AppendEntries` and Postgres's WAL streaming are the leader *pushing* to a follower and waiting for one ack, a single dispatch round trip. Kafka's followers instead run a continuous *fetch* loop against the leader (`replica.fetch.wait.max.ms`, default 500ms); `acks=all` completion depends on that poll loop noticing the new record, not a dedicated round trip triggered by the write. At 2 nodes that poll loop has no alternative to race against; at 3 it does, and the win is large. Not independently confirmed with the same CPU-profiling rigor as the `wrk` result, so I'm stating it as the likely mechanism, not a proven one.
-
-One number that doesn't fit any of this: `acks=1` on the container side got markedly *worse* at 3 nodes (25.55ms to 69.08ms avg, throughput roughly flat), despite `acks=1` not being a quorum operation at all. Flagged as an open anomaly rather than forced into a story I haven't verified.
+`acks=1` (leader-ack only, not a quorum vote at all) is the more surprising one: there's no fan-out cost to explain a host win the way there is for `acks=all`, and it still lands well outside the concurrency-favors-container pattern established by HTTP and etcd. Flagged as an open anomaly rather than forced into a story I haven't verified.
 
 ## MPI: no concurrency, no advantage
 
@@ -438,15 +393,12 @@ North-south doesn't fit that rule, and I'm not stretching it to; it's answering 
 
 If you're deciding whether to worry about CNI overhead for a specific workload, the question that actually predicts the answer isn't "is this network-heavy"; it's "does the load stack up requests fast enough for a cheaper per-packet datapath to matter." A quorum-writing database under real concurrent traffic: probably fine, possibly faster. A single long-running batch job doing one synchronous exchange at a time: measure it, don't assume.
 
-One more axis sits underneath all of this, orthogonal to it: quorum size. Dispatch cost decides *which side wins*. Quorum size decides *how much replication cost there is to begin with*, and a real majority (2-of-3) has less of it to pay than a degenerate 2-node "quorum" that's actually unanimity. Shrinking that cost helps whichever side was paying more of it, which for Postgres and Kafka was the host, dramatically. Not a universal law though: etcd's host path got outright slower at 3 nodes, not just less advantaged, because fanning `AppendEntries` out to a second follower is a real, separate tax that doesn't always net out in the host's favor. If you're running a 2-node database or coordination service in production for cost reasons, know that you're paying the unanimity tax, not a quorum tax, and that tax usually (not always) lands harder on bare-host deployments than on netkit ones.
-
 **Key takeaways**
 
 - For east-west traffic (pod-to-pod, most of this post), Cilium's `netkit` datapath beats a bare host socket specifically when a service handles many concurrent requests (proven via CPU profiling, not assumed).
 - It loses, or ties, when the bottleneck is server-side: a single-threaded command loop (Redis), row-lock contention (PostgreSQL), or a strictly synchronous 1:1 exchange (MPI) with no concurrency for a cheaper datapath to save CPU across.
 - Two east-west results looked like exceptions until traced to mechanism: Kafka's pull-based replication and a raw MPI ping-pong both behave differently from Raft- and WAL-style "wait for one ack" protocols.
 - North-south (external client to service) is a different traffic shape entirely: container still wins there, but for a different reason, with zero concurrency involved.
-- Quorum size is a separate axis from all of the above: a genuine 3-node majority (not 2-node unanimity) shrank the host's replication cost dramatically for Postgres and Kafka, narrowing or reversing the gap, because dispatch cost decides which side wins while quorum size decides how much cost there is to shrink. etcd is the exception, not the rule.
 
 ## References
 
