@@ -138,7 +138,7 @@ Note: Kernel bypass approaches such as DPDK introduce trade-offs—they make deb
 - **EC2 with an autoscaler**: Offers the most performance-efficient option for latency-critical workloads.
 - **Containers (ECS/Kubernetes)**: Containers provide a ubiquitous packaging format, and tools like ECS or Kubernetes supply turnkey ecosystems to deploy, scale, and operate applications.
 
-> Given these trade-offs, running critical workloads such as the matching engine or order management system on EC2 remains the pragmatic choice. Could ECS or Kubernetes work? Possibly, but performance constraints make them a secondary option today. That said, the Kubernetes ecosystem continues to address low-latency challenges. For example, recent Cilium (Kubernetes networking) benchmarks with the Netkit data plane show latency approaching non-container level as running the application on the host, and in some cases outperforming traditional east-west networking flows(such as for the RAFT cluster use case)[10].
+> Given these trade-offs, running critical workloads such as the matching engine or order management system on EC2 remains the pragmatic choice. Could ECS or Kubernetes work? Possibly, but performance constraints make them a secondary option today. That said, the Kubernetes ecosystem continues to address low-latency challenges. For example, recent Cilium (Kubernetes networking) benchmarks with the Netkit data plane show latency approaching non-container level as running the application on the host, and in some cases outperforming traditional east-west networking flows(such as for the RAFT cluster use case)[10][11].
 
 ## Service over the RAFT - Latency and Resiliency
 
@@ -272,4 +272,5 @@ The next part of series would focus on Market data and reporting sections.
 - [8][System deign interview - Alex Xu and Sahn Lam]()
 - [9][ProofTrading - Prerak Sanghvi](https://medium.com/prooftrading)
 - [10][Ciliums netkit](https://isovalent.com/blog/post/cilium-netkit-a-new-container-networking-paradigm-for-the-ai-era/)
+- [11][Linux Bare Host vs. Container with Cilium netkit: What Actually Wins](https://hrishi.dev/linux/kubernetes/networking/netkit/benchmarking/2026/08/23/cilium-netkit-host-vs-container-benchmarks.html) - hands-on host-vs-container benchmarks, including the etcd Raft quorum-write case where the netkit-backed container outperforms the bare host
 
