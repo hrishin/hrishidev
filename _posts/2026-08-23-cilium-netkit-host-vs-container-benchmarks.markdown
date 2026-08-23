@@ -40,6 +40,8 @@ Worth being explicit that this is a limitation, not just a methodology choice: a
 
 One methodological note worth keeping in mind while reading: not every "container wins" result is actually about Cilium. An early `iperf3` throughput test showed container traffic 2.4x faster than host-to-host, until holding the network path constant (private network on both sides) showed the *host* hitting the identical ceiling: 1,270 Mbit/s either way. That gap was the cloud provider's private network having a higher bandwidth ceiling than its public network, nothing to do with the CNI. Every result below has had that kind of confound checked for.
 
+A second confound applies across every container-side result in this post, not just one: the container path always runs through Cilium's full eBPF stack, `netkit` plus Cilium's other eBPF host optimizations (host-reachable services, host routing) together, never `netkit` in isolation. So every "container wins by Nx" number below is really "netkit + Cilium's other eBPF machinery" versus a plain, unmodified host. Separating netkit's specific contribution would need a third baseline, a host running Cilium's eBPF host-side programs with no container and no `netkit` in the path, which this post doesn't include. Worth isolating further.
+
 ## Where the container with netkit wins: concurrent, dispatch-bound traffic
 
 First, east-west: `wrk` (20 connections) runs on `worker-02` and hits the identical `whoami` binary on `worker-01`, two ways. Host case: a direct socket connection, no container, no CNI. Container case: through the `whoami` Service's `ClusterIP` (Cilium's DSR path), not bypassed to the pod IP directly:
@@ -115,7 +117,6 @@ Converting busy-% into CPU-time per request: `4 × (1 − 0.1706) = 3.32` CPUs b
 
 Worth being precise about what Isovalent's own numbers actually claim, though: their stated goal, and result, is netkit reaching **parity** with host networking, not beating it. ByteDance reported netkit giving a 12% CPS increase over `veth` in production; Meta found netkit's softirq load on live traffic "indistinguishable from host." Both are netkit closing a gap *down to* host, not a container process outrunning one. My result is a different, larger claim: container beating bare host outright, by 4.8x, under load, and I don't have a fully satisfying resolution for the size of that gap beyond the likely candidate: my host-side baseline is a plain `systemd`-managed process with nothing skipped and none of Cilium's other host-side optimizations (eBPF kube-proxy replacement, host routing) in play, since it isn't running through Cilium at all, closer to the "veth-era" baseline these vendor numbers are measured *against* than to the tuned host baseline they're measured *to*.
 
-That's a confound worth naming: the 4.8x is "netkit + Cilium's other eBPF host optimizations" versus a plain, unmodified host, not netkit isolated. Separating the two needs a third baseline: a host running Cilium's eBPF host-side programs with no container and no `netkit` in the path. Worth isolating further, not yet done here.
 
 A 3-node etcd Raft cluster (the real quorum shape, 2-of-3 majority) showed the same underlying mechanism: a quorum-committing `PUT` sends `AppendEntries` to two followers and waits for the faster one to ack: trivial per-request CPU work, cost dominated by dispatch.
 
