@@ -403,7 +403,7 @@ If you're deciding whether to worry about CNI overhead for a specific workload, 
 - For east-west traffic (pod-to-pod, most of this post), Cilium's `netkit` datapath beats a bare host socket specifically when a service handles many concurrent requests (proven via CPU profiling, not assumed).
 - It loses, or ties, when the bottleneck is server-side: a single-threaded command loop (Redis), row-lock contention (PostgreSQL), or a strictly synchronous 1:1 exchange (MPI) with no concurrency for a cheaper datapath to save CPU across.
 - Two east-west results looked like exceptions until traced to mechanism: Kafka's pull-based replication and a raw MPI ping-pong both behave differently from Raft- and WAL-style "wait for one ack" protocols.
-- North-south (external client to service) is a different traffic shape entirely: container still wins there, but for a different reason, with zero concurrency involved.
+- North-south (external client to service) is a different traffic shape entirely: container still wins there, but via Cilium's host-reachable-services (a client-side eBPF socket redirect), not netkit or concurrent dispatch savings.
 
 ## References
 
