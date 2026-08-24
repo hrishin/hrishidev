@@ -7,6 +7,21 @@ categories: [Linux, Kubernetes, Networking, netkit, Benchmarking]
 
 *Six workloads, one self-managed cluster, and a question I kept getting wrong until I measured it: does the extra hop through a container's CNI add real network overhead versus the same binary running as a plain Linux process on the bare host, or does Cilium's netkit datapath actually eliminate that bottleneck?*
 
+Where eBPF sits in the packet's path, XDP earliest in the driver, TC later once the kernel has committed to processing the packet:
+
+```mermaid!
+graph LR
+    NIC["NIC RX ring"] --> XDP{"XDP eBPF hook<br/>(driver, before sk_buff)"}
+    XDP -->|XDP_DROP| DROP["dropped"]
+    XDP -->|XDP_TX / XDP_REDIRECT| OUT["back out immediately<br/>no sk_buff, no stack"]
+    XDP -->|XDP_PASS| SKB["sk_buff allocated"]
+    SKB --> TC{"TC eBPF hook<br/>(qdisc layer, ingress/egress)"}
+    TC --> STACK["rest of kernel stack<br/>routing, netfilter, protocol"]
+    STACK --> SOCK["socket / userspace"]
+```
+
+netkit's own hooks (`netkit/primary`, `netkit/peer`) live at that TC-adjacent layer, after `sk_buff` allocation, not in XDP: the saving isn't skipping the kernel entirely, it's skipping the specific steps `veth` would otherwise force (the per-CPU backlog queue, the namespace hop) once the packet's already committed to going through the stack.
+
 netkit, for anyone new to it: a Linux kernel network device type, merged into mainline Linux 6.7, contributed largely by Cilium/Isovalent engineers and currently used as Cilium's container networking datapath. No `veth` pair, no virtual switch in the middle, just a lightweight in-kernel construct with eBPF hooks (`netkit/primary` and `netkit/peer`) on the send and receive path. The intent of this post is to observe netkit's benefits for clustered or distributed applications, especially databases and RAFT-based systems, something I'd always wanted to check since [building a stock exchange in the cloud](https://hrishi.dev/cloud/aws/trading/low-latency/distributed%20systems/2025/11/09/building-stock-exchange-in-the-cloud.html), where RAFT-style consensus latency is exactly the kind of thing that matters.
 
 ## The setup
@@ -131,6 +146,28 @@ Average:     all   25.64    0.00   49.02    0.00    0.00   14.12    0.00    0.00
 ```
 
 Converting busy-% into CPU-time per request: `4 × (1 − 0.1706) = 3.32` CPUs busy ÷ 3,014 req/s = **1.10ms** on the host; `4 × (1 − 0.1088) = 3.56` CPUs busy ÷ 15,588 req/s = **0.23ms** in the container. 4.81x more CPU per request on the host path, almost exactly matching the throughput gap. The mechanism, per [Isovalent's own writeup on netkit](https://isovalent.com/blog/post/cilium-netkit-a-new-container-networking-paradigm-for-the-ai-era/): pod egress traffic is redirected straight to the physical device from a BPF program running on the netkit device itself, **skipping the per-CPU backlog queue** (the same queue a `veth`-based pod would have to cross via a full namespace hop), plus `netkit` defaults to L3 (L2 is a supported option, just not the default), removing ARP overhead in that default mode. That's the documented source of the saving.
+
+Worth scoping that mechanism precisely against [Cilium's own source](https://github.com/cilium/cilium): the backlog-queue skip applies specifically to Pod egress traffic bound for a destination *outside the node*, a straight `bpf_redirect()` to the physical NIC's ifindex. It's not a blanket "netkit always skips the backlog queue" property. For intra-node Pod-to-Pod (or host-to-Pod) local delivery, Cilium's own [`bpf/lib/local_delivery.h`](https://github.com/cilium/cilium/blob/727edc56793b7e8ce07fabb1872afb290ddb4453/bpf/lib/local_delivery.h#L82-L83) says it plainly: "both `redirect()` and `redirect_peer()` only traverse the CPU backlog queue once," meaning `netkit`'s `redirect()` and `veth`'s `redirect_peer()` are equivalent on that path, netkit isn't skipping anything extra there. Every test in this post is cross-node, so it lands in the off-node-egress case where the skip does apply, but it's worth knowing the saving isn't universal to every `netkit` code path. The exact source, from Cilium's [`should_redirect_peer()`](https://github.com/cilium/cilium/blob/727edc56793b7e8ce07fabb1872afb290ddb4453/bpf/lib/local_delivery.h#L59-L88):
+
+```c
+/*
+ * For phys dev -> Pod:
+ * - on veth, we go ingress -> ingress so we can use redirect_peer()
+ * - on netkit, we go ingress -> ingress so we can use it too
+ *   (ingress ifindex is > 0 on ingress, and 0 on egress)
+ *
+ * Finally, in case of Pod -> Pod:
+ * - on veth, we're on TC ingress and need a redirect_peer() to get
+ *   to the target namespace. Same ingress -> ingress switch.
+ * - on netkit, we're on TC egress and need a regular redirect() to
+ *   the peer device's ifindex. netkit takes care of the namespace
+ *   switch for us. Here's it's egress -> ingress, therefore we must
+ *   use redirect() instead of redirect_peer().
+ *
+ * Note: both redirect() and redirect_peer() only traverse the CPU
+ * backlog queue once.
+ */
+```
 
 Worth being precise here:
 
