@@ -7,7 +7,7 @@ categories: [Linux, Kubernetes, Networking, netkit, Benchmarking]
 
 *Six workloads, one self-managed cluster, and a question I kept getting wrong until I measured it: does the extra hop through a container's CNI add real network overhead versus the same binary running as a plain Linux process on the bare host, or does Cilium's netkit datapath actually eliminate that bottleneck?*
 
-netkit, for anyone new to it: a Linux kernel network device type, merged into mainline Linux 6.7, contributed largely by Cilium/Isovalent engineers and currently used as Cilium's container networking datapath. No `veth` pair, no virtual switch in the middle, just a lightweight in-kernel construct with eBPF hooks (`netkit/primary` and `netkit/peer`) on the send and receive path[^netkit-isovalent].
+netkit, for anyone new to it: a Linux kernel network device type, merged into mainline Linux 6.7, contributed largely by Cilium/Isovalent engineers and currently used as Cilium's container networking datapath. No `veth` pair, no virtual switch in the middle, just a lightweight in-kernel construct with eBPF hooks (`netkit/primary` and `netkit/peer`) on the send and receive path[^netkit-isovalent]. The intent of this post is to observe netkit's benefits for clustered or distributed applications, especially databases and RAFT-based systems, something I'd always wanted to check since [building a stock exchange in the cloud](https://hrishi.dev/cloud/aws/trading/low-latency/distributed%20systems/2025/11/09/building-stock-exchange-in-the-cloud.html), where RAFT-style consensus latency is exactly the kind of thing that matters.
 
 ## The setup
 
@@ -34,13 +34,11 @@ Every quorum result compares the same three workers: a bare Linux process on eac
 
 Almost everything below is **east-west** traffic: pod-to-pod (or host-to-host) inside the cluster, the shape most inter-service and database traffic actually takes. There's one **north-south** data point too: an external client (`control-plane-01`, itself a plain host, no Kubernetes networking on its own side) hitting the worker directly for the host case, and hitting the same worker's Service `ClusterIP` (resolved via Cilium's host-reachable-services, an eBPF hook at the client's own socket layer, no `kube-proxy` involved) for the container case. Worth keeping separate: it's a different traffic shape from the paired host-vs-host / pod-vs-pod comparisons everywhere else in this post.
 
-Every system here runs on its distribution's default configuration: default `sysctl` values, default TCP buffer sizes, no CPU pinning or NUMA tuning, no custom kernel parameters, stock package configs for Redis/PostgreSQL/Kafka/etcd beyond the minimum needed to get replication or clustering working at all. Nothing here is tuned for the benchmark, on either side of the comparison, deliberately: the question is what happens to an unmodified deployment, not what's achievable after a tuning pass.
+Three things worth keeping in mind while reading:
 
-Worth being explicit that this is a limitation, not just a methodology choice: an untuned Linux host is not the host's best case. Kernel-parameter tuning (`sysctl` network buffer sizes, IRQ/CPU affinity, NUMA pinning, and similar) is exactly the kind of work a latency-sensitive production deployment would actually do, and it could move the host-side numbers in this post, possibly enough to change which side wins some of the closer results. Nothing here says a tuned bare-metal host would still lose to netkit; it says an out-of-the-box one does, on this hardware, for these workloads.
-
-One methodological note worth keeping in mind while reading: not every "container wins" result is actually about Cilium. An early `iperf3` throughput test showed container traffic 2.4x faster than host-to-host, until holding the network path constant (private network on both sides) showed the *host* hitting the identical ceiling: 1,270 Mbit/s either way. That gap was the cloud provider's private network having a higher bandwidth ceiling than its public network, nothing to do with the CNI. Every result below has had that kind of confound checked for.
-
-A second confound applies across every container-side result in this post, not just one: the container path always runs through Cilium's full eBPF stack, `netkit` plus Cilium's other eBPF host optimizations (host-reachable services, host routing) together, never `netkit` in isolation. So every "container wins by Nx" number below is really "netkit + Cilium's other eBPF machinery" versus a plain, unmodified host. Separating netkit's specific contribution would need a third baseline, a host running Cilium's eBPF host-side programs with no container and no `netkit` in the path, which this post doesn't include. Worth isolating further.
+- **Nothing here is tuned.** Every system runs its distribution's default configuration: default `sysctl` values, default TCP buffer sizes, no CPU pinning or NUMA tuning, no custom kernel parameters, stock package configs for Redis/PostgreSQL/Kafka/etcd beyond the minimum needed to get replication or clustering working at all, deliberately, on both sides. That's a real limitation, not just a methodology note: an untuned host isn't the host's best case, and kernel-parameter tuning (`sysctl` buffer sizes, IRQ/CPU affinity, NUMA pinning) is exactly what a latency-sensitive production deployment would actually do, work that could move the host-side numbers enough to flip some of the closer results. This post answers what happens to an unmodified deployment, not whether a tuned bare-metal host would still lose to netkit.
+- **Not every "container wins" result is actually about eBPF + `netkit`.** An early `iperf3` throughput test showed container traffic 2.4x faster than host-to-host, until holding the network path constant (private network on both sides) showed the *host* hitting the identical ceiling: 1,270 Mbit/s either way. That gap was the cloud provider's private network having a higher bandwidth ceiling than its public network, nothing to do with the CNI. Every result below has had that kind of confound checked for.
+- **The container path is never `netkit` in isolation.** It always runs through Cilium's full eBPF stack, `netkit` plus Cilium's other eBPF host optimizations (host-reachable services, host routing) together. So every "container wins by Nx" number below is really "netkit + Cilium's other eBPF machinery" versus a plain, unmodified host. Separating netkit's specific contribution would need a third baseline this post doesn't include: the same Cilium eBPF stack, but with a `veth` pair standing in for `netkit` as the container device, holding everything else (host-reachable services, host routing) constant. That comparison, Cilium-with-`veth` versus Cilium-with-`netkit`, is what would isolate netkit's own marginal effect from the rest of Cilium's eBPF machinery. Worth running as a follow-up.
 
 ## Where the container with netkit wins: concurrent, dispatch-bound traffic
 
@@ -113,9 +111,16 @@ Average:     CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest
 Average:     all   25.64    0.00   49.02    0.00    0.00   14.12    0.00    0.00    0.00   10.88
 ```
 
-Converting busy-% into CPU-time per request: `4 × (1 − 0.1706) = 3.32` CPUs busy ÷ 3,014 req/s = **1.10ms** on the host; `4 × (1 − 0.1088) = 3.56` CPUs busy ÷ 15,588 req/s = **0.23ms** in the container. 4.81x more CPU per request on the host path, almost exactly matching the throughput gap. The mechanism, per Isovalent's own writeup on netkit[^netkit-isovalent]: pod egress traffic is redirected straight to the physical device from a BPF program running on the netkit device itself, **skipping the per-CPU backlog queue** (the same queue a `veth`-based pod would have to cross via a full namespace hop), plus `netkit` defaults to L3 (L2 is a supported option, just not the default), removing ARP overhead in that default mode. That's the documented source of the saving; I was wrong to reach for virtio and ring buffers, which nothing in netkit's own design touches.
+Converting busy-% into CPU-time per request: `4 × (1 − 0.1706) = 3.32` CPUs busy ÷ 3,014 req/s = **1.10ms** on the host; `4 × (1 − 0.1088) = 3.56` CPUs busy ÷ 15,588 req/s = **0.23ms** in the container. 4.81x more CPU per request on the host path, almost exactly matching the throughput gap. The mechanism, per Isovalent's own writeup on netkit[^netkit-isovalent]: pod egress traffic is redirected straight to the physical device from a BPF program running on the netkit device itself, **skipping the per-CPU backlog queue** (the same queue a `veth`-based pod would have to cross via a full namespace hop), plus `netkit` defaults to L3 (L2 is a supported option, just not the default), removing ARP overhead in that default mode. That's the documented source of the saving.
 
-Worth being precise about what Isovalent's own numbers actually claim, though: their stated goal, and result, is netkit reaching **parity** with host networking, not beating it. ByteDance reported netkit giving a 12% CPS increase over `veth` in production; Meta found netkit's softirq load on live traffic "indistinguishable from host." Both are netkit closing a gap *down to* host, not a container process outrunning one. My result is a different, larger claim: container beating bare host outright, by 4.8x, under load, and I don't have a fully satisfying resolution for the size of that gap beyond the likely candidate: my host-side baseline is a plain `systemd`-managed process with nothing skipped and none of Cilium's other host-side optimizations (eBPF kube-proxy replacement, host routing) in play, since it isn't running through Cilium at all, closer to the "veth-era" baseline these vendor numbers are measured *against* than to the tuned host baseline they're measured *to*.
+Worth being precise here:
+
+1. Isovalent's design goal for netkit: make container (pod) networking as fast as bare host networking, reaching **parity**, not exceeding it.
+2. ByteDance/Meta reports: netkit gets container networking close to host performance (ByteDance: 12% CPS gain over `veth` in a proof-of-concept, with plans to roll out in production; Meta: softirq load indistinguishable from host, measured on live production traffic). Both describe netkit closing the gap up to host from below, the historical `veth` overhead shrinking toward zero.
+3. My result is different in kind, not degree: I'm not reporting netkit narrowing a gap, I'm reporting the container path outright beating the host path by 4.8x. That's a stronger, less common claim than what any vendor number here supports.
+4. My hedge: I don't have a clean explanation for that inversion, but my best guess is the comparison isn't apples-to-apples. My "host" baseline is a bare `systemd` process with none of Cilium's host-side accelerations (eBPF kube-proxy replacement, host routing), because it isn't running through Cilium at all. So my host baseline is closer to the unoptimized baseline vendors compare netkit against, not the optimized host baseline they compare netkit to (i.e. parity with).
+
+In short: my 4.8x might be an artifact of comparing accelerated-container vs. unaccelerated-host, rather than genuine evidence that containers can outrun host networking.
 
 
 A 3-node etcd Raft cluster (the real quorum shape, 2-of-3 majority) showed the same underlying mechanism: a quorum-committing `PUT` sends `AppendEntries` to two followers and waits for the faster one to ack: trivial per-request CPU work, cost dominated by dispatch.
@@ -200,7 +205,7 @@ PostgreSQL tells the same story, with a twist. Standalone `pgbench` (async commi
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
   </style>
   <title id="postgresql-throughput-standalone-vs-sync-replication-tps-title">PostgreSQL throughput: standalone vs sync replication (TPS)</title>
-  <desc id="postgresql-throughput-standalone-vs-sync-replication-tps-desc">PostgreSQL throughput, standalone vs sync replication (TPS). grouped bar data: Standalone: Host 739.4, Container 572.3; Sync replication: Host 579.8, Container 568.6.Source: Author benchmark, pgbench -c 20 -T 30, 2026 .</desc>
+  <desc id="postgresql-throughput-standalone-vs-sync-replication-tps-desc">PostgreSQL throughput, standalone vs sync replication (TPS). grouped bar data: Standalone: Host 700.98, Container 667.98; Sync replication: Host 697.70, Container 649.96.Source: Author benchmark, pgbench -c 20 -T 30, 2026 .</desc>
   <text x="280.0" y="29" text-anchor="middle" font-size="18" font-weight="800" fill="currentColor">PostgreSQL throughput: standalone vs sync replication (TPS)</text>
 
   <line x1="72" y1="277.0" x2="492" y2="277.0" stroke="currentColor" opacity="0.08" />
@@ -213,20 +218,20 @@ PostgreSQL tells the same story, with a twist. Standalone `pgbench` (async commi
 <rect x="177" y="62" width="10" height="10" fill="#38bdf8" />
 <text x="192" y="71" font-size="11" fill="currentColor">Container</text>
 <rect x="159.0" y="92.0" width="16.0" height="185.0" fill="#f97316" />
-<text x="167.0" y="88.0" text-anchor="middle" font-size="9" fill="currentColor">739.4</text>
-<rect x="177.0" y="133.8" width="16.0" height="143.2" fill="#38bdf8" />
-<text x="185.0" y="129.8" text-anchor="middle" font-size="9" fill="currentColor">572.3</text>
+<text x="167.0" y="88.0" text-anchor="middle" font-size="9" fill="currentColor">700.98</text>
+<rect x="177.0" y="100.7" width="16.0" height="176.3" fill="#38bdf8" />
+<text x="185.0" y="96.7" text-anchor="middle" font-size="9" fill="currentColor">667.98</text>
 <text x="177.0" y="295.0" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8"><tspan x="177.0" dy="0">Standalone</tspan></text>
-<rect x="369.0" y="131.9" width="16.0" height="145.1" fill="#f97316" />
-<text x="377.0" y="127.9" text-anchor="middle" font-size="9" fill="currentColor">579.8</text>
-<rect x="387.0" y="134.7" width="16.0" height="142.3" fill="#38bdf8" />
-<text x="395.0" y="130.7" text-anchor="middle" font-size="9" fill="currentColor">568.6</text>
+<rect x="369.0" y="92.9" width="16.0" height="184.1" fill="#f97316" />
+<text x="377.0" y="88.9" text-anchor="middle" font-size="9" fill="currentColor">697.70</text>
+<rect x="387.0" y="105.5" width="16.0" height="171.5" fill="#38bdf8" />
+<text x="395.0" y="101.5" text-anchor="middle" font-size="9" fill="currentColor">649.96</text>
 <text x="387.0" y="295.0" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.8"><tspan x="387.0" dy="0">Sync</tspan><tspan x="387.0" dy="11">replication</tspan></text>
   <text x="280.0" y="366" text-anchor="middle" font-size="10" fill="var(--chart-muted, currentColor)">Source: Author benchmark, pgbench -c 20 -T 30, 2026</text>
 </svg>
 </figure>
 
-Standalone: host ahead 29% (739 vs 572 TPS), same lock-contention story as Redis, no replication involved. Turning synchronous replication on changes the picture: `synchronous_standby_names = 'ANY 1 (standby2, standby3)'` (primary plus two standbys) waits for whichever standby acks first, the shape a production quorum-commit deployment actually runs.
+Standalone: host ahead ~5% (701 vs 668 TPS), same lock-contention story as Redis, no replication involved. Turning synchronous replication on changes the picture: `synchronous_standby_names = 'ANY 1 (standby2, standby3)'` (primary plus two standbys) waits for whichever standby acks first, the shape a production quorum-commit deployment actually runs.
 
 <figure class="blog-chart">
 <svg viewBox="0 0 560 380" style="max-width: 100%; height: auto; font-family: 'Inter', system-ui, sans-serif; --chart-muted: #4b5563;" role="img" aria-labelledby="postgresql-marginal-cost-of-synchronous-replication-title postgresql-marginal-cost-of-synchronous-replication-desc">
@@ -256,7 +261,7 @@ Standalone: host ahead 29% (739 vs 572 TPS), same lock-contention story as Redis
 </svg>
 </figure>
 
-Turning synchronous replication on cost the host **0.5%** throughput. Essentially free: with a real majority to wait for, the leader races the faster of two standbys instead of paying a full round trip every time. The container's marginal cost was higher in relative terms (2.7%), though still small in absolute terms, because its per-packet dispatch cost was already cheap enough that a full round trip barely registered in the first place. Sequential commit latency (confound-controlled, same Alpine/musl `psql` client both sides) tells the same story at smaller scale: container 14.24ms vs host 20.86ms, a 1.46x gap.
+Turning synchronous replication on cost the host **0.5%** throughput. Essentially free: with a real majority to wait for, the leader races the faster of two standbys instead of paying a full round trip every time. The container's marginal cost was higher in relative terms (2.7%), though still small in absolute terms, because its per-packet dispatch cost was already cheap enough that a full round trip barely registered in the first place. Sequential commit latency (confound-controlled, same Alpine/musl `psql` client both sides) tells the same story at smaller scale: container 14.24ms vs host 20.86ms, a 1.46x gap. Two different questions, two different winners: on the %-cost of turning replication on, the host is "cheaper" because a nearly-free round trip barely dents its throughput; on the commit itself, the container is faster in absolute terms, 1.46x on latency, the direct measurement to trust here.
 
 ## Kafka: pull-based replication favors the host
 
@@ -402,7 +407,7 @@ If you're deciding whether to worry about CNI overhead for a specific workload, 
 
 ## References
 
-- [Cilium netkit: The Final Frontier in Container Networking Performance](https://isovalent.com/blog/post/cilium-netkit-a-new-container-networking-paradigm-for-the-ai-era/). Nico Vibert, Isovalent, 2024. The primary source on netkit's design and the mechanism behind its performance (per-CPU backlog queue skip, L3-by-default), plus the ByteDance and Meta production data points cited above.
+- [Cilium netkit: The Final Frontier in Container Networking Performance](https://isovalent.com/blog/post/cilium-netkit-a-new-container-networking-paradigm-for-the-ai-era/). Nico Vibert, Isovalent, 2024. The primary source on netkit's design and the mechanism behind its performance (per-CPU backlog queue skip, L3-by-default), plus the ByteDance proof-of-concept and Meta production data points cited above.
 - [Introduction to Linux netkit interfaces with a grain of eBPF](https://blog.yadutaf.fr/2025/07/01/introduction-to-linux-netkit-interfaces-with-a-grain-of-ebpf/). A clear walkthrough of netkit's primary/peer device model and its `netkit/primary` and `netkit/peer` eBPF hooks.
 - [Creating a Yogurt Phone with netkit eBPF](https://blog.yadutaf.fr/2025/09/16/creating-a-yogurt-phone-with-netkit-ebpf). A deeper look at cross-namespace routing with netkit, including the `netkit_xnet()` metadata-scrubbing step and why `bpf_redirect()` is needed in place of `veth`'s `bpf_redirect_peer()`.
 
