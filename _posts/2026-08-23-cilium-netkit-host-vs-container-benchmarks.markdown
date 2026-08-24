@@ -30,6 +30,18 @@ graph TD
     W1 <==> W3
 ```
 
+`cilium status` on a worker, confirming the datapath actually under test:
+
+```
+KubeProxyReplacement:   True   [ens2   203.0.113.10 fe80::xxxx:xxff:fexx:xxxx, ens6   172.16.0.3 fd12:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx fe80::xxxx:xxff:fexx:xxxx (Direct Routing)]
+Routing:                Network: Native   Host: Legacy
+Device Mode:            netkit
+KubeProxyReplacement Details:
+  Devices:               ens2   203.0.113.10 fe80::xxxx:xxff:fexx:xxxx, ens6   172.16.0.3 fd12:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx fe80::xxxx:xxff:fexx:xxxx (Direct Routing)
+  Mode:                  DSR
+    DSR Dispatch Mode:   IP Option/Extension
+```
+
 Every quorum result compares the same three workers: a bare Linux process on each versus a netkit-backed pod on each, never a mix.
 
 Almost everything below is **east-west** traffic: pod-to-pod (or host-to-host) inside the cluster, the shape most inter-service and database traffic actually takes. There's one **north-south** data point too: an external client (`control-plane-01`, itself a plain host, no Kubernetes networking on its own side) hitting the worker directly for the host case, and hitting the same worker's Service `ClusterIP` (resolved via Cilium's host-reachable-services, an eBPF hook at the client's own socket layer, no `kube-proxy` involved) for the container case. Worth keeping separate: it's a different traffic shape from the paired host-vs-host / pod-vs-pod comparisons everywhere else in this post.
