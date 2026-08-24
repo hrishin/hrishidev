@@ -54,7 +54,14 @@ Three things worth keeping in mind while reading:
 
 ## Where the container with netkit wins: concurrent, dispatch-bound traffic
 
-First, east-west: `wrk` (20 connections) runs on `worker-02` and hits the identical `whoami` binary on `worker-01`, two ways. Host case: a direct socket connection, no container, no CNI. Container case: through the `whoami` Service's `ClusterIP` (Cilium's DSR path), not bypassed to the pod IP directly:
+First, east-west: `wrk` (20 connections) runs on `worker-02` and hits the identical `whoami` binary on `worker-01`, two ways. Host case: a direct socket connection, no container, no CNI. Container case: through the `whoami` Service's `ClusterIP` (Cilium's DSR path), not bypassed to the pod IP directly. Raw `wrk` output, same 20-connection run behind both numbers in the chart below:
+
+| Path | Requests | Data read | Req/sec | Avg response size |
+|---|---|---|---|---|
+| host, private network (ens6) | 45,511 | 26.39 MB | 3,014.00 | ≈608 B |
+| container, via Service ClusterIP | 235,377 | 70.47 MB | 15,588.00 | ≈314 B |
+
+> **A note on response size**: the average response size differs almost 2x between the two paths (≈608B host, ≈314B container), an uncontrolled variable I didn't pin down before running the test, likely `whoami` echoing back different hostname/IP/header content depending on which path served the request. Both sizes fit in a single packet and neither path comes close to saturating link bandwidth (14.6 Mbit/s host, 39.2 Mbit/s container, versus a cloud VM's actual NIC capacity), so it's unlikely to explain a 4.8x gap on its own; the `mpstat` mechanism below is a per-packet dispatch cost, not a per-byte one. But it's a real variable this test didn't control for.
 
 <figure class="blog-chart">
 <svg viewBox="0 0 560 380" style="max-width: 100%; height: auto; font-family: 'Inter', system-ui, sans-serif; --chart-muted: #4b5563;" role="img" aria-labelledby="http-throughput-host-vs-container-wrk-20-connections-title http-throughput-host-vs-container-wrk-20-connections-desc">
