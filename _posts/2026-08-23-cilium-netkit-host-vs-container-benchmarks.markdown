@@ -424,6 +424,8 @@ If you're deciding whether to worry about CNI overhead for a specific workload, 
 - Two east-west results looked like exceptions until traced to mechanism: Kafka's pull-based replication and a raw MPI ping-pong both behave differently from Raft- and WAL-style "wait for one ack" protocols.
 - North-south (external client to service) is a different traffic shape entirely: container still wins there, but via Cilium's host-reachable-services (a client-side eBPF socket redirect), not netkit or concurrent dispatch savings.
 
+The Linux networking stack keeps closing the gap between container and bare-host performance (eBPF, netkit, DSR, host-reachable services), but "closing the gap" isn't "container always wins." Which side wins is a function of the workload's own characteristics (concurrency, dispatch-vs-CPU-bound), not a fixed tax either side pays.
+
 ## References
 
 - [Cilium netkit: The Final Frontier in Container Networking Performance](https://isovalent.com/blog/post/cilium-netkit-a-new-container-networking-paradigm-for-the-ai-era/). Nico Vibert, Isovalent, July 2024 (updated July 2024). The primary source on netkit's design and the mechanism behind its performance (per-CPU backlog queue skip, L3-by-default), plus the ByteDance proof-of-concept and Meta production data points cited above.
