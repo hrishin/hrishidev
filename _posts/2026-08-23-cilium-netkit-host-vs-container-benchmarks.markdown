@@ -426,6 +426,8 @@ If you're deciding whether to worry about CNI overhead for a specific workload, 
 
 The best approach is still to profile and trace the actual bottlenecks, in the application, the runtime, and the host, whether that's a bare Linux process or a container, and tune configuration parameters from there, rather than assume either side wins by default. And weigh that against the right tradeoff for your system: deterministic peak performance versus operational simplicity.
 
+*We expect life to be black and white; the more we delve, the more we find it still leans towards either black or white, just rarely the same one twice.*
+
 ## References
 
 - [Cilium netkit: The Final Frontier in Container Networking Performance](https://isovalent.com/blog/post/cilium-netkit-a-new-container-networking-paradigm-for-the-ai-era/). Nico Vibert, Isovalent, July 2024 (updated July 2024). The primary source on netkit's design and the mechanism behind its performance (per-CPU backlog queue skip, L3-by-default), plus the ByteDance proof-of-concept and Meta production data points cited above.
