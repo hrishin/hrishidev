@@ -147,7 +147,161 @@ Average:     all   25.64    0.00   49.02    0.00    0.00   14.12    0.00    0.00
 
 Converting busy-% into CPU-time per request: `4 × (1 − 0.1706) = 3.32` CPUs busy ÷ 3,014 req/s = **1.10ms** on the host; `4 × (1 − 0.1088) = 3.56` CPUs busy ÷ 15,588 req/s = **0.23ms** in the container. 4.81x more CPU per request on the host path, almost exactly matching the throughput gap. The mechanism, per [Isovalent's own writeup on netkit](https://isovalent.com/blog/post/cilium-netkit-a-new-container-networking-paradigm-for-the-ai-era/): pod egress traffic is redirected straight to the physical device from a BPF program running on the netkit device itself, **skipping the per-CPU backlog queue** (the same queue a `veth`-based pod would have to cross via a full namespace hop), plus `netkit` defaults to L3 (L2 is a supported option, just not the default), removing ARP overhead in that default mode. That's the documented source of the saving.
 
-Worth scoping that mechanism precisely against [Cilium's own source](https://github.com/cilium/cilium): the backlog-queue skip applies specifically to Pod egress traffic bound for a destination *outside the node*, a straight `bpf_redirect()` to the physical NIC's ifindex. It's not a blanket "netkit always skips the backlog queue" property. For intra-node Pod-to-Pod (or host-to-Pod) local delivery, Cilium's own [`bpf/lib/local_delivery.h`](https://github.com/cilium/cilium/blob/727edc56793b7e8ce07fabb1872afb290ddb4453/bpf/lib/local_delivery.h#L82-L83) says it plainly: "both `redirect()` and `redirect_peer()` only traverse the CPU backlog queue once," meaning `netkit`'s `redirect()` and `veth`'s `redirect_peer()` are equivalent on that path, netkit isn't skipping anything extra there. Every test in this post is cross-node, so it lands in the off-node-egress case where the skip does apply, but it's worth knowing the saving isn't universal to every `netkit` code path. The exact source, from Cilium's [`should_redirect_peer()`](https://github.com/cilium/cilium/blob/727edc56793b7e8ce07fabb1872afb290ddb4453/bpf/lib/local_delivery.h#L59-L88):
+Worth scoping that mechanism precisely against [Cilium's own source](https://github.com/cilium/cilium): the backlog-queue skip applies specifically to Pod egress traffic bound for a destination *outside the node*, a straight `bpf_redirect()` to the physical NIC's ifindex. It's not a blanket "netkit always skips the backlog queue" property. For intra-node Pod-to-Pod (or host-to-Pod) local delivery, Cilium's own [`bpf/lib/local_delivery.h`](https://github.com/cilium/cilium/blob/727edc56793b7e8ce07fabb1872afb290ddb4453/bpf/lib/local_delivery.h#L82-L83) says it plainly: "both `redirect()` and `redirect_peer()` only traverse the CPU backlog queue once," meaning `netkit`'s `redirect()` and `veth`'s `redirect_peer()` are equivalent on that path, netkit isn't skipping anything extra there. Every test in this post is cross-node, so it lands in the off-node-egress case where the skip does apply, but it's worth knowing the saving isn't universal to every `netkit` code path:
+
+Traditional host-to-host (bare Linux process, no container, no CNI):
+
+```
+  process
+      │  socket syscall
+      ▼
+  kernel network stack (single netns, no extra hop)
+      │
+      ▼
+  NIC driver ──► physical NIC ──► wire
+      (no netns crossing, no backlog queue involved at all)
+```
+
+`veth`-based pod, off-node egress, generic CNI (bridge + iptables, no eBPF host routing, *not* how Cilium itself runs `veth`, see note below):
+
+```
+  process (pod netns)
+      │  socket syscall
+      ▼
+  veth peer (pod side, pod netns)
+      │  crosses into host netns
+      ▼
+  ┄┄┄┄┄┄┄ CPU per-CPU backlog queue ┄┄┄┄┄┄┄   [1 crossing, always]
+      │
+      ▼
+  veth peer (host side, host netns)
+      │  host stack: routing / netfilter / bridge
+      ▼
+  NIC driver ──► physical NIC ──► wire
+```
+
+Note: this is the generic, pre-eBPF-host-routing baseline, the "veth-era" comparison point ByteDance/Meta/Isovalent's own numbers are measured against, not Cilium's own `veth` mode. Cilium has used eBPF-based host routing on `veth` since 1.9 (`bpf_redirect_peer()`/`bpf_redirect_neigh()`), which skips the netfilter/bridge hop shown above; it still crosses the backlog queue once, per the `local_delivery.h` source quoted further down.
+
+`netkit`-based pod, off-node egress (Cilium eBPF path):
+
+```
+  process (pod netns)
+      │  socket syscall
+      ▼
+  netkit peer device (pod netns)
+      │  eBPF hook: bpf_redirect(phys_ifindex)
+      ▼
+  NIC driver ──► physical NIC ──► wire
+      (per-CPU backlog queue skipped entirely, redirect targets
+       the physical device's ifindex directly from the eBPF hook)
+```
+
+The middle hop is where the difference actually lives: bare host never has one, `veth` always pays it once per off-node packet, `netkit` replaces it with a single BPF redirect straight to the NIC.
+
+That skip is one-directional, though: it's specific to a Pod's own traffic *leaving* the node. The receiving side, a packet arriving at this node destined for a local Pod, is not accelerated the same way:
+
+`netkit`-based pod, off-node ingress (phys dev → Pod, receiving side):
+
+```
+  wire ──► physical NIC ──► NIC driver
+      │  sk_buff allocated, normal RX processing
+      ▼
+  Cilium TC ingress hook
+      │  redirect_peer()-style ingress -> ingress switch
+      ▼
+  ┄┄┄┄┄┄┄ CPU per-CPU backlog queue ┄┄┄┄┄┄┄   [1 crossing, always]
+      │
+      ▼
+  netkit peer device (pod netns)
+      │
+      ▼
+  process (pod netns)
+
+  (identical mechanism for veth: same redirect_peer()-style switch,
+   same one backlog-queue crossing; netkit gets no ingress-side skip)
+```
+
+So a request into `worker-01`'s pod in the `wrk` test pays the same ingress cost either way, `netkit` or `veth`, and only the response leaving the node gets the accelerated egress path from the diagram above. The mpstat-measured CPU saving behind the 4.81x number is realistically coming from that egress leg of each request/response cycle, not the full round trip.
+
+A caution about reading the diagrams above too literally, though: they only track one specific thing, whether a packet crosses the per-CPU backlog queue, not total CPU cost. The bare host-to-host diagram's single "kernel network stack" box is hiding real work: protocol-layer processing, a routing lookup, netfilter/conntrack traversal if anything on the box has rules loaded, qdisc queuing, the blocking-syscall/epoll wakeup path. None of that is optimized away for a plain, unaccelerated process. The `netkit` diagrams look busier (an extra peer device, an eBPF hook) but that hook is part of Cilium's entire optimized datapath, not just the one backlog-queue trick. Fewer boxes in a simplified diagram isn't the same claim as less CPU work; that's exactly the asymmetry the "Worth being precise here" section above already flags as an open, unresolved question, not something these diagrams settle.
+
+Laid out as a full round trip, sending app to receiving app, the difference in *what each side has to do*, not just whether it crosses the backlog queue, looks like this. Bare host-to-host:
+
+```
+sending app (node A)
+    │  write()/send() syscall
+    ▼
+TCP/IP protocol stack (segmentation, checksums, cwnd)
+    │
+    ▼
+netfilter / conntrack (OUTPUT, POSTROUTING, if rules/conntrack loaded)
+    │
+    ▼
+routing lookup (FIB)
+    │
+    ▼
+qdisc (tc queueing discipline)
+    │
+    ▼
+NIC driver ──► physical NIC (node A) ──► wire
+    ⋮
+wire ──► physical NIC (node B) ──► NIC driver
+    │  NAPI poll, sk_buff allocated
+    ▼
+netfilter / conntrack (PREROUTING, INPUT, if rules/conntrack loaded)
+    │
+    ▼
+routing lookup (local delivery decision)
+    │
+    ▼
+TCP/IP protocol stack (reassembly, ACK generation)
+    │
+    ▼
+socket receive buffer ──► wakes blocked process (context switch)
+    │
+    ▼
+receiving app (node B), read()/recv() returns
+```
+
+`netkit`-based pod-to-pod, off-node, same round trip:
+
+```
+sending app (pod netns, node A)
+    │  write()/send() syscall
+    ▼
+TCP/IP protocol stack (pod netns)
+    │
+    ▼
+netkit peer device (pod netns)
+    │  eBPF hook: policy check + bpf_redirect(phys_ifindex)
+    ▼  (replaces host-side netfilter chain-walking with one eBPF
+    │   hook; per-CPU backlog queue skipped)
+qdisc (physical NIC's own queueing discipline, not bypassed)
+    │
+    ▼
+NIC driver ──► physical NIC (node A) ──► wire
+    ⋮
+wire ──► physical NIC (node B) ──► NIC driver
+    │  NAPI poll, sk_buff allocated
+    ▼
+Cilium TC ingress hook (native routing, no kube-proxy/iptables)
+    │  eBPF policy check + redirect_peer()-style switch
+    ▼  (per-CPU backlog queue crossed once, same as veth)
+netkit peer device (pod netns)
+    │
+    ▼
+TCP/IP protocol stack (pod netns)
+    │
+    ▼
+socket receive buffer ──► wakes blocked process
+    │
+    ▼
+receiving app (pod netns, node B), read()/recv() returns
+```
+
+One box disappears entirely on the `netkit` sending side, host-side netfilter chain-walking, replaced by one eBPF hook doing policy check and redirect together, and the per-CPU backlog queue crossing is skipped for this off-node leg. The physical NIC's own qdisc still applies on both paths; a TC `bpf_redirect()` to another device calls `dev_queue_xmit()` on that device, the same entry point into the qdisc layer any other packet uses, so `netkit` doesn't bypass that. On the receiving side, both paths still do a policy/routing decision, just via different mechanisms: standard netfilter chain-walking on the host side versus an eBPF map lookup on the Cilium side. I'm not claiming one is cheaper than the other here; this post has no citation or profiling that isolates that specific comparison, so it's left unlabeled rather than asserted. Worth being honest about the limit here: this diagram shows *where* the work differs, not a verified, itemized accounting of *how much* CPU each box actually costs on this hardware, that would need `perf`/`ftrace`-level profiling this post didn't do, beyond the `mpstat` `%usr`/`%sys`/`%soft` breakdown already shown above.
+
+The exact source, from Cilium's [`should_redirect_peer()`](https://github.com/cilium/cilium/blob/727edc56793b7e8ce07fabb1872afb290ddb4453/bpf/lib/local_delivery.h#L59-L88):
 
 ```c
 /*
