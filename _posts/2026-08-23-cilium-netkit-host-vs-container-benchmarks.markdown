@@ -423,6 +423,7 @@ If you're deciding whether to worry about CNI overhead for a specific workload, 
 - It loses, or ties, when the bottleneck is server-side: a single-threaded command loop (Redis), row-lock contention (PostgreSQL), or a strictly synchronous 1:1 exchange (MPI) with no concurrency for a cheaper datapath to save CPU across.
 - Two east-west results looked like exceptions until traced to mechanism: Kafka's pull-based replication and a raw MPI ping-pong both behave differently from Raft- and WAL-style "wait for one ack" protocols.
 - North-south (external client to service) is a different traffic shape entirely: container still wins there, but via Cilium's host-reachable-services (a client-side eBPF socket redirect), not netkit or concurrent dispatch savings.
+- `netkit` is still relatively new (merged in Linux 6.7) and nowhere near as battle-tested as `veth`; you may expect rough edges and undiscovered issues a decade-old, widely deployed mechanism has already had sanded down.
 
 The best approach is still to profile and trace the actual bottlenecks, in the application, the runtime, and the host, whether that's a bare Linux process or a container, and tune configuration parameters from there, rather than assume either side wins by default. And weigh that against the right tradeoff for your system: deterministic peak performance versus operational simplicity.
 
