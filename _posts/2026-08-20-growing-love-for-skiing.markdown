@@ -122,8 +122,10 @@ At last, I hope life keeps skiing as exciting as I'm writing about it, some of t
 ![Lying flat on a snowy slope after a fall, with two people looking on in the background](/assets/loose-cannon-fall.jpg)
 _Loose cannon_
 
-<video controls muted playsinline preload="metadata" style="max-width: 360px; width: 100%; display: block; margin: 0 auto;">
-  <source src="/assets/skiing.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
-_A run down the slope, tree successfully avoided_
+<figure style="text-align: center;">
+  <video controls muted playsinline preload="metadata" style="max-width: 360px; width: 100%; display: block; margin: 0 auto;">
+    <source src="/assets/skiing.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+  <figcaption><em>Sometimes you want to relive the moment, yet don't want to change anything</em></figcaption>
+</figure>
