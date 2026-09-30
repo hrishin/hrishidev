@@ -30,10 +30,10 @@ _Pretending to smile after falling off on the ramp, thanks to my sneakers_
 
 But standing there watching people of all ages (kids, teens, adults, and whole families), I quite felt like I'd want to give it a try someday.
 
-Fast forward, my former workplace DRW arranged an office skiing trip to Morzine, France in March 2024. I thought of signing up
+Fast forward, my former workplace DRW arranged an office skiing trip to Morzine, France in March 2024(not sure to call it workplace or home, mostly home). I thought of signing up
 for it, despite a few colleagues warning me that breaking my bones was quite probable, which in hindsight was less a warning and more a professional forecast. Finally I took
 a leap of faith and started getting myself ready for the skiing trip.
-My colleagues seemed like experts, and I wanted to make sure I'd be able to keep up. So I took
+My colleagues(friends) seemed like experts, and I wanted to make sure I'd be able to keep up. So I took
 this on like a mission and started taking lessons north of London at [The Snow Centre Hemel Hempstead](https://thesnowcentre.com/hemel-hempstead/).
 After roughly 18-20 hours of lessons I thought I was ready to conquer the slopes :P. But real slopes
 are just out there to prove you wrong, gravity included, and hell yeah, I was nowhere close to what I'd been imagining and
@@ -115,7 +115,7 @@ I'd be very keen to try [the Vallée Blanche in Chamonix, France](https://guides
 
 With all this, this has also been the first time I've followed an entire Winter Olympics, 2026, thoroughly enjoying everything from figure skating to all the skiing and snowboarding competitions. Someday I'd love to see the Olympics in person.
 
-For this, I owe a big thank you to my former colleagues, who reintroduced me to my love for sports through skiing, ping pong, and cycling.
+For this, I owe a big thank you to my former colleagues(but thy are like friends and family), who reintroduced me to my love for sports through skiing, ping pong, and cycling.
 
 At last, I hope life keeps skiing as exciting as I'm writing about it, some of the love for sports I've rediscovered, bruises and all.
 
