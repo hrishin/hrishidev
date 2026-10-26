@@ -41,7 +41,6 @@ would need to keep up with friends while skiing. But after that one skiing trip 
 and I think it was an unconscious reminder for me: learning a new sport gives you the confidence that you could do something worthwhile you've never done before in 
 life. I came back with pretty much mesmerizing experiences, some fond memories, and a new nickname (I've been labeled a loose cannon by a colleague ever since, 
 a title I've chosen to wear with pride, mostly because the alternatives suggested were worse.)
-> **Note:** In between all this skiing, I also made it to KubeCon EU Paris 2024, because apparently the adventures never stop. A good friend of mine presented a talk on Confidential Containers (CoCo): [https://www.youtube.com/watch?v=Ko0o5_hpmxI](https://www.youtube.com/watch?v=Ko0o5_hpmxI)
 
 ![A view of snow-capped mountains and ski slopes from a piste in Morzine, France](/assets/morzine-mountain-view.jpg)
 
