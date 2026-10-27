@@ -30,7 +30,7 @@ _Pretending to smile after falling off on the ramp, thanks to my sneakers_
 
 But standing there watching people of all ages (kids, teens, adults, and whole families), I quite felt like I'd want to give it a try someday.
 
-Fast forward, my former workplace DRW arranged an office skiing trip to Morzine, France in March 2024(not sure to call it workplace or home, mostly home). I thought of signing up
+Fast forward, my former workplace arranged an office skiing trip to Morzine, France in March 2024(not sure to call it workplace or home, mostly home). I thought of signing up
 for it, despite a few colleagues warning me that breaking my bones was quite probable, which in hindsight was less a warning and more a professional forecast. Finally I took
 a leap of faith and started getting myself ready for the skiing trip.
 My colleagues(friends) seemed like experts, and I wanted to make sure I'd be able to keep up. So I took
